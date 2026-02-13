@@ -68,31 +68,36 @@ jobs:
             strip target/${{ matrix.target }}/release/velos || true
           fi
 
-      - name: Package
+      - name: Package as tar.gz
         run: |
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/velos dist/${{ matrix.name }}
+          mkdir -p dist/${{ matrix.name }}
+          cp target/${{ matrix.target }}/release/velos dist/${{ matrix.name }}/velos
           cd dist
-          if command -v sha256sum &>/dev/null; then
-            sha256sum ${{ matrix.name }} > ${{ matrix.name }}.sha256
-          else
-            shasum -a 256 ${{ matrix.name }} > ${{ matrix.name }}.sha256
-          fi
+          tar czf ${{ matrix.name }}.tar.gz ${{ matrix.name }}/
+          rm -rf ${{ matrix.name }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: dist/
+          path: dist/${{ matrix.name }}.tar.gz
 
   release:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          sha256sum *.tar.gz > checksums.txt
+          cat checksums.txt
 
       - name: List artifacts
         run: find artifacts -type f | sort
@@ -100,7 +105,81 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: |
+            artifacts/*.tar.gz
+            artifacts/checksums.txt
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, '-') }}
+
+  upload-r2:
+    name: Upload to Cloudflare R2
+    needs: release
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          sha256sum *.tar.gz > checksums.txt
+
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id "${{ secrets.R2_ACCESS_KEY_ID }}"
+          aws configure set aws_secret_access_key "${{ secrets.R2_SECRET_ACCESS_KEY }}"
+          aws configure set default.region auto
+
+      - name: Extract version
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to R2 (versioned)
+        env:
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+
+          # Upload versioned artifacts
+          for file in artifacts/*.tar.gz; do
+            aws s3 cp "$file" "s3://${R2_BUCKET}/${VERSION}/$(basename "$file")" \
+              --endpoint-url "$R2_ENDPOINT" \
+              --content-type "application/gzip"
+          done
+
+          # Upload checksums
+          aws s3 cp artifacts/checksums.txt "s3://${R2_BUCKET}/${VERSION}/checksums.txt" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "text/plain"
+
+      - name: Upload to R2 (latest)
+        env:
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          # Copy to latest/
+          for file in artifacts/*.tar.gz; do
+            aws s3 cp "$file" "s3://${R2_BUCKET}/latest/$(basename "$file")" \
+              --endpoint-url "$R2_ENDPOINT" \
+              --content-type "application/gzip"
+          done
+
+          aws s3 cp artifacts/checksums.txt "s3://${R2_BUCKET}/latest/checksums.txt" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "text/plain"
+
+      - name: Upload install script to R2
+        env:
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          aws s3 cp distribution/install.sh "s3://${R2_BUCKET}/install.sh" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "text/plain"

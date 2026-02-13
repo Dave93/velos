@@ -4,20 +4,24 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="High-performance AI-friendly process manager"
 arch=('x86_64' 'aarch64')
-url="https://github.com/user/velos"
+url="https://github.com/Dave93/velos"
 license=('MIT')
 depends=()
 provides=('velos')
 conflicts=('velos-git')
 
-source_x86_64=("${url}/releases/download/v${pkgver}/velos-linux-x86_64")
-source_aarch64=("${url}/releases/download/v${pkgver}/velos-linux-arm64")
+_arch_map_x86_64="x86_64"
+_arch_map_aarch64="arm64"
+
+source_x86_64=("${url}/releases/download/v${pkgver}/velos-linux-x86_64.tar.gz")
+source_aarch64=("${url}/releases/download/v${pkgver}/velos-linux-arm64.tar.gz")
 
 sha256sums_x86_64=('PLACEHOLDER')
 sha256sums_aarch64=('PLACEHOLDER')
 
 package() {
-    install -Dm755 "${srcdir}/velos-linux-${CARCH/x86_64/x86_64}" "${pkgdir}/usr/bin/velos"
+    local _target_arch="${_arch_map_${CARCH}}"
+    install -Dm755 "${srcdir}/velos-linux-${_target_arch}/velos" "${pkgdir}/usr/bin/velos"
 
     # Install shell completions if available
     if [ -f "${srcdir}/completions/velos.bash" ]; then
