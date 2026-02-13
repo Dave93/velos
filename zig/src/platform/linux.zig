@@ -10,6 +10,8 @@ pub const EpollLoop = struct {
 
     epoll_fd: posix.fd_t,
     signal_fd: posix.fd_t,
+    // Accumulated signal mask for signalfd
+    signal_mask: linux.sigset_t,
     // Track which fds map to which EventKind
     fd_kinds: std.AutoHashMap(posix.fd_t, pal.EventKind),
     allocator: std.mem.Allocator,
@@ -41,6 +43,7 @@ pub const EpollLoop = struct {
         return Self{
             .epoll_fd = @intCast(epfd),
             .signal_fd = @intCast(sfd),
+            .signal_mask = std.mem.zeroes(linux.sigset_t),
             .fd_kinds = std.AutoHashMap(posix.fd_t, pal.EventKind).init(allocator),
             .allocator = allocator,
         };
@@ -86,19 +89,19 @@ pub const EpollLoop = struct {
     fn addSignalImpl(self_ptr: *anyopaque, sig: u6) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(self_ptr));
 
-        // Block the signal from default handling
-        var mask: linux.sigset_t = std.mem.zeroes(linux.sigset_t);
+        // Add signal to accumulated mask
         const sig_int: usize = @intCast(sig);
         const word_index = sig_int / @bitSizeOf(usize);
         const bit_index: u5 = @intCast(sig_int % @bitSizeOf(usize));
-        if (word_index < mask.len) {
-            mask[word_index] |= @as(usize, 1) << bit_index;
+        if (word_index < self.signal_mask.len) {
+            self.signal_mask[word_index] |= @as(usize, 1) << bit_index;
         }
-        _ = linux.sigprocmask(linux.SIG.BLOCK, &mask, null);
 
-        // Update signalfd mask — need to recreate with new mask
-        // Read current mask from signalfd, add new signal
-        _ = linux.signalfd(self.signal_fd, &mask, linux.SFD.NONBLOCK | linux.SFD.CLOEXEC);
+        // Block the signal from default handling
+        _ = linux.sigprocmask(linux.SIG.BLOCK, &self.signal_mask, null);
+
+        // Update signalfd with full accumulated mask
+        _ = linux.signalfd(self.signal_fd, &self.signal_mask, linux.SFD.NONBLOCK | linux.SFD.CLOEXEC);
 
         try self.fd_kinds.put(@intCast(sig), pal.EventKind.signal);
     }

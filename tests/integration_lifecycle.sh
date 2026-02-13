@@ -1679,6 +1679,7 @@ echo ""
 echo "51. Shutdown daemon"
 kill "$DAEMON_PID" 2>/dev/null
 wait "$DAEMON_PID" 2>/dev/null || true
+sleep 0.5  # allow filesystem to sync on Linux
 DAEMON_PID=""
 
 if [ ! -S "$SOCKET" ]; then pass "socket cleaned up"
