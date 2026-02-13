@@ -1,9 +1,13 @@
 const std = @import("std");
 const posix = std.posix;
+const builtin = @import("builtin");
 
 // Module imports
 pub const pal_mod = @import("platform/pal.zig");
-pub const macos_mod = @import("platform/macos.zig");
+pub const platform_mod = if (builtin.os.tag == .macos)
+    @import("platform/macos.zig")
+else
+    @import("platform/linux.zig");
 pub const protocol_mod = @import("ipc/protocol.zig");
 pub const server_mod = @import("ipc/server.zig");
 pub const supervisor_mod = @import("process/supervisor.zig");
@@ -16,8 +20,11 @@ pub const watcher_mod = @import("watch/watcher.zig");
 pub const cron_mod = @import("cron/parser.zig");
 pub const ipc_channel_mod = @import("process/ipc_channel.zig");
 
-// Re-export types for tests
-const KqueueLoop = macos_mod.KqueueLoop;
+// Platform event loop type (KqueueLoop on macOS, EpollLoop on Linux)
+const PlatformEventLoop = if (builtin.os.tag == .macos)
+    platform_mod.KqueueLoop
+else
+    platform_mod.EpollLoop;
 const Watcher = watcher_mod.Watcher;
 const CronExpr = cron_mod.CronExpr;
 const IpcServer = server_mod.IpcServer;
@@ -66,7 +73,7 @@ pub const VelosLogEntry = extern struct {
 // ============================================================
 
 var g_allocator: std.mem.Allocator = undefined;
-var g_event_loop: ?KqueueLoop = null;
+var g_event_loop: ?PlatformEventLoop = null;
 var g_pal: ?pal_mod.Pal = null;
 var g_ipc_server: ?IpcServer = null;
 var g_supervisor: ?Supervisor = null;
@@ -124,7 +131,7 @@ export fn velos_daemon_init(
     g_log_collector = LogCollector.init(g_allocator, log_dir);
 
     // Initialize event loop (kqueue on macOS)
-    g_event_loop = KqueueLoop.init(g_allocator) catch return -6;
+    g_event_loop = PlatformEventLoop.init(g_allocator) catch return -6;
     g_pal = g_event_loop.?.asPal();
 
     // Initialize supervisor

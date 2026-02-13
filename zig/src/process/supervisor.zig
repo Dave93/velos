@@ -1033,28 +1033,29 @@ fn getProcessRss(pid: posix.pid_t) u64 {
     return 0;
 }
 
-// macOS proc_pid_rusage for RSS memory
-extern "c" fn proc_pid_rusage(pid: c_int, flavor: c_int, buffer: *anyopaque) c_int;
-
-const RUSAGE_INFO_V0 = 0;
-
-const RusageInfoV0 = extern struct {
-    ri_uuid: [16]u8 = std.mem.zeroes([16]u8),
-    ri_user_time: u64 = 0,
-    ri_system_time: u64 = 0,
-    ri_pkg_idle_wkups: u64 = 0,
-    ri_interrupt_wkups: u64 = 0,
-    ri_pageins: u64 = 0,
-    ri_wired_size: u64 = 0,
-    ri_resident_size: u64 = 0,
-    ri_phys_footprint: u64 = 0,
-    ri_proc_start_abstime: u64 = 0,
-    ri_proc_exit_abstime: u64 = 0,
-};
+// macOS-specific RSS monitoring (only compiled on macOS)
+const macos_rss = if (builtin.os.tag == .macos) struct {
+    extern "c" fn proc_pid_rusage(pid: c_int, flavor: c_int, buffer: *anyopaque) c_int;
+    const RUSAGE_INFO_V0 = 0;
+    const RusageInfoV0 = extern struct {
+        ri_uuid: [16]u8 = std.mem.zeroes([16]u8),
+        ri_user_time: u64 = 0,
+        ri_system_time: u64 = 0,
+        ri_pkg_idle_wkups: u64 = 0,
+        ri_interrupt_wkups: u64 = 0,
+        ri_pageins: u64 = 0,
+        ri_wired_size: u64 = 0,
+        ri_resident_size: u64 = 0,
+        ri_phys_footprint: u64 = 0,
+        ri_proc_start_abstime: u64 = 0,
+        ri_proc_exit_abstime: u64 = 0,
+    };
+} else struct {};
 
 fn getProcessRssMacos(pid: posix.pid_t) u64 {
-    var rusage: RusageInfoV0 = .{};
-    const ret = proc_pid_rusage(@intCast(pid), RUSAGE_INFO_V0, @ptrCast(&rusage));
+    if (comptime builtin.os.tag != .macos) return 0;
+    var rusage: macos_rss.RusageInfoV0 = .{};
+    const ret = macos_rss.proc_pid_rusage(@intCast(pid), macos_rss.RUSAGE_INFO_V0, @ptrCast(&rusage));
     if (ret != 0) return 0;
     return rusage.ri_resident_size;
 }
