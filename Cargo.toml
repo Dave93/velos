@@ -4,6 +4,11 @@ members = [
     "crates/velos-core",
     "crates/velos-client",
     "crates/velos-cli",
+    "crates/velos-config",
+    "crates/velos-log-engine",
+    "crates/velos-mcp",
+    "crates/velos-metrics",
+    "crates/velos-api",
 ]
 resolver = "2"
 

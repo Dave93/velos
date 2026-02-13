@@ -89,6 +89,60 @@ impl VelosClient {
         Ok(String::from_utf8_lossy(&resp.payload).to_string())
     }
 
+    /// Restart a process by ID.
+    pub async fn restart(&mut self, id: u32) -> Result<(), VelosError> {
+        let payload = RestartPayload { process_id: id };
+        let resp = self
+            .conn
+            .request(CommandCode::ProcessRestart, payload.encode())
+            .await?;
+        self.check_response(&resp)
+    }
+
+    /// Get detailed info for a process by ID.
+    pub async fn info(&mut self, id: u32) -> Result<ProcessDetail, VelosError> {
+        let payload = InfoPayload { process_id: id };
+        let resp = self
+            .conn
+            .request(CommandCode::ProcessInfo, payload.encode())
+            .await?;
+        self.check_response(&resp)?;
+        decode_process_detail(&resp.payload)
+    }
+
+    /// Save current process list to disk.
+    pub async fn save(&mut self) -> Result<(), VelosError> {
+        let resp = self
+            .conn
+            .request(CommandCode::StateSave, Vec::new())
+            .await?;
+        self.check_response(&resp)
+    }
+
+    /// Load and start saved processes from disk.
+    pub async fn resurrect(&mut self) -> Result<StateLoadResult, VelosError> {
+        let resp = self
+            .conn
+            .request(CommandCode::StateLoad, Vec::new())
+            .await?;
+        self.check_response(&resp)?;
+        StateLoadResult::decode(&resp.payload)
+    }
+
+    /// Scale a cluster to a target instance count.
+    pub async fn scale(&mut self, name: &str, target_count: u32) -> Result<ScaleResult, VelosError> {
+        let payload = ScalePayload {
+            name: name.to_string(),
+            target_count,
+        };
+        let resp = self
+            .conn
+            .request(CommandCode::ProcessScale, payload.encode())
+            .await?;
+        self.check_response(&resp)?;
+        ScaleResult::decode(&resp.payload)
+    }
+
     /// Shutdown the daemon.
     pub async fn shutdown(&mut self) -> Result<(), VelosError> {
         let resp = self

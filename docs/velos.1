@@ -1,0 +1,140 @@
+.TH VELOS 1 "2026-02-13" "0.1.0" "Velos Process Manager"
+.SH NAME
+velos \- high-performance AI-friendly process manager
+.SH SYNOPSIS
+.B velos
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B Velos
+is a high-performance process manager with a Zig core and Rust shell.
+It features a built-in MCP server for AI agent integration, smart log analysis
+(dedup, anomaly detection, pattern analysis) with zero LLM cost, cluster mode,
+and Prometheus metrics.
+.SH COMMANDS
+.TP
+.B daemon
+Run the daemon in foreground. Options: \fB\-\-socket\fR \fIpath\fR, \fB\-\-state\-dir\fR \fIpath\fR.
+.TP
+.B start \fIscript\fR
+Start a process. Options: \fB\-n\fR \fIname\fR, \fB\-\-config\fR \fIfile.toml\fR,
+\fB\-\-watch\fR, \fB\-\-max\-restarts\fR \fIN\fR, \fB\-\-no\-autorestart\fR,
+\fB\-\-max\-memory\fR \fIsize\fR, \fB\-\-cron\-restart\fR \fIexpr\fR,
+\fB\-\-wait\-ready\fR, \fB\-\-shutdown\-with\-message\fR,
+\fB\-i\fR \fIN|max\fR, \fB\-\-json\fR.
+.TP
+.B stop \fIname_or_id\fR
+Stop a running process. Sends SIGTERM, then SIGKILL after kill_timeout.
+.TP
+.B restart \fIname_or_id\fR
+Restart a process (stop + start). Use "all" to restart all processes.
+.TP
+.B reload \fIname_or_id\fR
+Gracefully reload a process. Use "all" for all processes.
+.TP
+.B list
+List all managed processes with status, PID, memory, uptime, restarts.
+Aliases: \fBls\fR. Options: \fB\-\-json\fR, \fB\-\-ai\fR.
+.TP
+.B info \fIname_or_id\fR
+Show detailed process information (config, state, metrics).
+Options: \fB\-\-json\fR, \fB\-\-ai\fR.
+.TP
+.B logs \fIname\fR
+Show process logs with smart analysis. Options: \fB\-l\fR \fIN\fR,
+\fB\-\-grep\fR \fIpattern\fR, \fB\-\-level\fR \fIlevels\fR,
+\fB\-\-since\fR \fItime\fR, \fB\-\-until\fR \fItime\fR,
+\fB\-\-dedupe\fR, \fB\-\-summary\fR, \fB\-\-json\fR, \fB\-\-ai\fR.
+.TP
+.B delete \fIname_or_id\fR
+Delete a process from the daemon.
+.TP
+.B save
+Save current process list to state file (~/.velos/state.bin).
+.TP
+.B resurrect
+Restore previously saved processes from state file.
+.TP
+.B flush \fR[\fIname_or_id\fR]
+Flush (truncate) log files. Omit name to flush all.
+.TP
+.B scale \fIname\fR \fIcount\fR
+Scale cluster instances. Count can be a number, +N, -N, or "max".
+.TP
+.B metrics
+Start Prometheus metrics exporter. Options: \fB\-p\fR \fIport\fR (default: 9615),
+\fB\-\-otel\-endpoint\fR \fIurl\fR.
+.TP
+.B api
+Start REST API server with WebSocket. Options: \fB\-p\fR \fIport\fR (default: 3100),
+\fB\-\-token\fR \fIsecret\fR.
+.TP
+.B monit
+Launch TUI monitoring dashboard.
+.TP
+.B mcp\-server
+Start MCP server (stdio transport) for AI agent integration.
+.TP
+.B startup
+Generate startup script for the system init (systemd/launchd).
+.TP
+.B unstartup
+Remove previously generated startup script.
+.TP
+.B completions \fIshell\fR
+Generate shell completions. Supported shells: bash, zsh, fish, elvish, powershell.
+.TP
+.B ping
+Ping the daemon to check if it is running.
+.SH ENVIRONMENT
+.TP
+.B VELOS_HOME
+Override the default state directory (default: ~/.velos).
+.TP
+.B VELOS_IPC_FD
+File descriptor for child process IPC (set automatically by daemon).
+.SH FILES
+.TP
+.I ~/.velos/velos.sock
+Unix domain socket for IPC.
+.TP
+.I ~/.velos/velos.pid
+Daemon PID file.
+.TP
+.I ~/.velos/state.bin
+Saved process state (binary format).
+.TP
+.I ~/.velos/logs/
+Process log files ({name}-out.log, {name}-err.log).
+.TP
+.I velos.toml
+Project-level configuration file.
+.SH EXAMPLES
+.nf
+# Start daemon and a process
+velos daemon &
+velos start server.js --name api
+
+# Cluster mode with 4 instances
+velos start worker.js --name worker -i 4
+
+# Smart log analysis
+velos logs api --summary
+velos logs api --level error --grep "timeout" --dedupe
+
+# Save state and restore after reboot
+velos save
+velos resurrect
+
+# Generate shell completions
+velos completions bash > ~/.bash_completion.d/velos
+velos completions zsh > ~/.zfunc/_velos
+.fi
+.SH AUTHORS
+Velos contributors.
+.SH LICENSE
+MIT OR Apache-2.0
+.SH SEE ALSO
+.BR pm2 (1),
+.BR systemctl (1),
+.BR supervisord (1)

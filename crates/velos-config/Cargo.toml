@@ -1,0 +1,11 @@
+[package]
+name = "velos-config"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+velos-core = { path = "../velos-core" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+thiserror = "2"

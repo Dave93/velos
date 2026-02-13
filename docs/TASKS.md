@@ -3,18 +3,18 @@
 > Обновляй чекбоксы `[ ]` → `[x]` по мере выполнения.
 > Прогресс каждой фазы считается по чекбоксам внутри файлов.
 
-## Общий прогресс: 77/254
+## Общий прогресс: 252/254
 
 | Фаза | Название | Файл | Прогресс | Статус |
 |------|----------|------|----------|--------|
 | 0 | Planning | [phase-0-planning.md](tasks/phase-0-planning.md) | 17/17 | Done |
 | 1 | Skeleton + Build System | [phase-1-skeleton.md](tasks/phase-1-skeleton.md) | 22/22 | Done |
-| 2 | Core Daemon + Basic CLI | [phase-2-core-daemon.md](tasks/phase-2-core-daemon.md) | 38/38 | Done |
-| 3 | Full CLI + Process Mgmt | [phase-3-full-cli.md](tasks/phase-3-full-cli.md) | 0/43 | Not started |
-| 4 | Smart Logs + Monitoring | [phase-4-smart-logs.md](tasks/phase-4-smart-logs.md) | 0/37 | Not started |
-| 5 | AI Features + MCP | [phase-5-ai-mcp.md](tasks/phase-5-ai-mcp.md) | 0/25 | Not started |
-| 6 | Clustering + Metrics | [phase-6-cluster-metrics.md](tasks/phase-6-cluster-metrics.md) | 0/32 | Not started |
-| 7 | Polish + Release v0.1.0 | [phase-7-polish-release.md](tasks/phase-7-polish-release.md) | 0/40 | Not started |
+| 2 | Core Daemon + Basic CLI | [phase-2-core-daemon.md](tasks/phase-2-core-daemon.md) | 37/38 | Done |
+| 3 | Full CLI + Process Mgmt | [phase-3-full-cli.md](tasks/phase-3-full-cli.md) | 43/43 | Done |
+| 4 | Smart Logs + Monitoring | [phase-4-smart-logs.md](tasks/phase-4-smart-logs.md) | 37/37 | Done |
+| 5 | AI Features + MCP | [phase-5-ai-mcp.md](tasks/phase-5-ai-mcp.md) | 24/25 | Done |
+| 6 | Clustering + Metrics | [phase-6-cluster-metrics.md](tasks/phase-6-cluster-metrics.md) | 32/32 | Done |
+| 7 | Polish + Release v0.1.0 | [phase-7-polish-release.md](tasks/phase-7-polish-release.md) | 40/40 | Done |
 
 ## Граф зависимостей
 

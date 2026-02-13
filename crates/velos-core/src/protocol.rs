@@ -33,6 +33,10 @@ impl BinaryWriter {
         self.buf.extend_from_slice(&val.to_le_bytes());
     }
 
+    pub fn write_i32(&mut self, val: i32) {
+        self.buf.extend_from_slice(&val.to_le_bytes());
+    }
+
     pub fn write_string(&mut self, s: &str) {
         self.write_u32(s.len() as u32);
         self.buf.extend_from_slice(s.as_bytes());
@@ -67,6 +71,15 @@ impl<'a> BinaryReader<'a> {
             return Err(crate::VelosError::ProtocolError("truncated u32".into()));
         }
         let val = u32::from_le_bytes(self.data[self.pos..self.pos + 4].try_into().unwrap());
+        self.pos += 4;
+        Ok(val)
+    }
+
+    pub fn read_i32(&mut self) -> Result<i32, crate::VelosError> {
+        if self.pos + 4 > self.data.len() {
+            return Err(crate::VelosError::ProtocolError("truncated i32".into()));
+        }
+        let val = i32::from_le_bytes(self.data[self.pos..self.pos + 4].try_into().unwrap());
         self.pos += 4;
         Ok(val)
     }
@@ -139,6 +152,7 @@ pub enum CommandCode {
     ProcessDelete = 0x04,
     ProcessList = 0x05,
     ProcessInfo = 0x06,
+    ProcessScale = 0x07,
     LogRead = 0x10,
     LogStream = 0x11,
     MetricsGet = 0x20,
@@ -231,6 +245,20 @@ pub struct StartPayload {
     pub interpreter: Option<String>,
     pub kill_timeout_ms: u32,
     pub autorestart: bool,
+    pub max_restarts: i32,
+    pub min_uptime_ms: u64,
+    pub restart_delay_ms: u32,
+    pub exp_backoff: bool,
+    pub max_memory_restart: u64,
+    pub watch: bool,
+    pub watch_delay_ms: u32,
+    pub watch_paths: String,
+    pub watch_ignore: String,
+    pub cron_restart: String,
+    pub wait_ready: bool,
+    pub listen_timeout_ms: u32,
+    pub shutdown_with_message: bool,
+    pub instances: u32,
 }
 
 impl StartPayload {
@@ -242,7 +270,53 @@ impl StartPayload {
         w.write_string(self.interpreter.as_deref().unwrap_or(""));
         w.write_u32(self.kill_timeout_ms);
         w.write_u8(if self.autorestart { 1 } else { 0 });
+        w.write_i32(self.max_restarts);
+        w.write_u64(self.min_uptime_ms);
+        w.write_u32(self.restart_delay_ms);
+        w.write_u8(if self.exp_backoff { 1 } else { 0 });
+        w.write_u64(self.max_memory_restart);
+        w.write_u8(if self.watch { 1 } else { 0 });
+        w.write_u32(self.watch_delay_ms);
+        w.write_string(&self.watch_paths);
+        w.write_string(&self.watch_ignore);
+        w.write_string(&self.cron_restart);
+        w.write_u8(if self.wait_ready { 1 } else { 0 });
+        w.write_u32(self.listen_timeout_ms);
+        w.write_u8(if self.shutdown_with_message { 1 } else { 0 });
+        w.write_u32(self.instances);
         w.buf
+    }
+}
+
+// --- Scale ---
+
+pub struct ScalePayload {
+    pub name: String,
+    pub target_count: u32,
+}
+
+impl ScalePayload {
+    pub fn encode(&self) -> Vec<u8> {
+        let mut w = BinaryWriter::new();
+        w.write_string(&self.name);
+        w.write_u32(self.target_count);
+        w.buf
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ScaleResult {
+    pub started: u32,
+    pub stopped: u32,
+}
+
+impl ScaleResult {
+    pub fn decode(data: &[u8]) -> Result<Self, crate::VelosError> {
+        let mut r = BinaryReader::new(data);
+        Ok(Self {
+            started: r.read_u32()?,
+            stopped: r.read_u32()?,
+        })
     }
 }
 
@@ -330,6 +404,127 @@ pub fn decode_process_list(data: &[u8]) -> Result<Vec<ProcessInfo>, crate::Velos
         });
     }
     Ok(procs)
+}
+
+// --- Restart ---
+
+pub struct RestartPayload {
+    pub process_id: u32,
+}
+
+impl RestartPayload {
+    pub fn encode(&self) -> Vec<u8> {
+        let mut w = BinaryWriter::new();
+        w.write_u32(self.process_id);
+        w.buf
+    }
+}
+
+// --- Info ---
+
+pub struct InfoPayload {
+    pub process_id: u32,
+}
+
+impl InfoPayload {
+    pub fn encode(&self) -> Vec<u8> {
+        let mut w = BinaryWriter::new();
+        w.write_u32(self.process_id);
+        w.buf
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ProcessDetail {
+    pub id: u32,
+    pub name: String,
+    pub pid: u32,
+    pub status: u8,
+    pub memory_bytes: u64,
+    pub uptime_ms: u64,
+    pub restart_count: u32,
+    pub consecutive_crashes: u32,
+    pub last_restart_ms: u64,
+    pub script: String,
+    pub cwd: String,
+    pub interpreter: String,
+    pub kill_timeout_ms: u32,
+    pub autorestart: bool,
+    pub max_restarts: i32,
+    pub min_uptime_ms: u64,
+    pub restart_delay_ms: u32,
+    pub exp_backoff: bool,
+    pub max_memory_restart: u64,
+    pub watch: bool,
+    pub cron_restart: String,
+    pub wait_ready: bool,
+    pub shutdown_with_message: bool,
+}
+
+impl ProcessDetail {
+    pub fn status_str(&self) -> &'static str {
+        match self.status {
+            0 => "stopped",
+            1 => "running",
+            2 => "errored",
+            3 => "starting",
+            _ => "unknown",
+        }
+    }
+}
+
+/// Decode process detail matching Zig handleProcessInfo encoding order:
+/// id(u32) + name(string) + pid(u32) + status(u8) + memory(u64) + uptime(u64)
+/// + restarts(u32) + consecutive_crashes(u32) + last_restart_ms(u64)
+/// + script(string) + cwd(string) + interpreter(string)
+/// + kill_timeout(u32) + autorestart(u8) + max_restarts(i32)
+/// + min_uptime_ms(u64) + restart_delay_ms(u32) + exp_backoff(u8)
+pub fn decode_process_detail(data: &[u8]) -> Result<ProcessDetail, crate::VelosError> {
+    let mut r = BinaryReader::new(data);
+    Ok(ProcessDetail {
+        id: r.read_u32()?,
+        name: r.read_string()?,
+        pid: r.read_u32()?,
+        status: r.read_u8()?,
+        memory_bytes: r.read_u64()?,
+        uptime_ms: r.read_u64()?,
+        restart_count: r.read_u32()?,
+        consecutive_crashes: r.read_u32()?,
+        last_restart_ms: r.read_u64()?,
+        script: r.read_string()?,
+        cwd: r.read_string()?,
+        interpreter: r.read_string()?,
+        kill_timeout_ms: r.read_u32()?,
+        autorestart: r.read_u8()? != 0,
+        max_restarts: r.read_i32()?,
+        min_uptime_ms: r.read_u64()?,
+        restart_delay_ms: r.read_u32()?,
+        exp_backoff: r.read_u8()? != 0,
+        max_memory_restart: r.read_u64()?,
+        watch: r.read_u8()? != 0,
+        cron_restart: r.read_string()?,
+        wait_ready: r.read_u8()? != 0,
+        shutdown_with_message: r.read_u8()? != 0,
+    })
+}
+
+// --- State Save/Load ---
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StateLoadResult {
+    pub count: u32,
+}
+
+impl StateLoadResult {
+    pub fn decode(data: &[u8]) -> Result<Self, crate::VelosError> {
+        if data.is_empty() {
+            return Ok(Self { count: 0 });
+        }
+        let mut r = BinaryReader::new(data);
+        Ok(Self {
+            count: r.read_u32()?,
+        })
+    }
 }
 
 // --- LogRead ---
@@ -447,6 +642,20 @@ mod tests {
             interpreter: None,
             kill_timeout_ms: 5000,
             autorestart: true,
+            max_restarts: 15,
+            min_uptime_ms: 1000,
+            restart_delay_ms: 100,
+            exp_backoff: false,
+            max_memory_restart: 0,
+            watch: false,
+            watch_delay_ms: 0,
+            watch_paths: String::new(),
+            watch_ignore: String::new(),
+            cron_restart: String::new(),
+            wait_ready: false,
+            listen_timeout_ms: 8000,
+            shutdown_with_message: false,
+            instances: 1,
         };
         let bytes = payload.encode();
 
@@ -457,6 +666,74 @@ mod tests {
         assert_eq!(r.read_string().unwrap(), ""); // no interpreter
         assert_eq!(r.read_u32().unwrap(), 5000);
         assert_eq!(r.read_u8().unwrap(), 1); // autorestart
+        assert_eq!(r.read_i32().unwrap(), 15); // max_restarts
+        assert_eq!(r.read_u64().unwrap(), 1000); // min_uptime_ms
+        assert_eq!(r.read_u32().unwrap(), 100); // restart_delay_ms
+        assert_eq!(r.read_u8().unwrap(), 0); // exp_backoff
+        assert_eq!(r.read_u64().unwrap(), 0); // max_memory_restart
+        assert_eq!(r.read_u8().unwrap(), 0); // watch
+        assert_eq!(r.read_u32().unwrap(), 0); // watch_delay_ms
+        assert_eq!(r.read_string().unwrap(), ""); // watch_paths
+        assert_eq!(r.read_string().unwrap(), ""); // watch_ignore
+        assert_eq!(r.read_string().unwrap(), ""); // cron_restart
+        assert_eq!(r.read_u8().unwrap(), 0); // wait_ready
+        assert_eq!(r.read_u32().unwrap(), 8000); // listen_timeout_ms
+        assert_eq!(r.read_u8().unwrap(), 0); // shutdown_with_message
+        assert_eq!(r.read_u32().unwrap(), 1); // instances
+    }
+
+    #[test]
+    fn test_process_detail_decode() {
+        // Matches Zig handleProcessInfo encoding order
+        let mut w = BinaryWriter::new();
+        w.write_u32(1);          // id
+        w.write_string("myapp"); // name
+        w.write_u32(1234);      // pid
+        w.write_u8(1);          // status = running
+        w.write_u64(50 * 1024 * 1024); // memory_bytes
+        w.write_u64(120000);    // uptime_ms
+        w.write_u32(3);         // restart_count
+        w.write_u32(2);         // consecutive_crashes
+        w.write_u64(100000);    // last_restart_ms
+        w.write_string("app.js"); // config.script
+        w.write_string("/tmp");   // config.cwd
+        w.write_string("node");   // config.interpreter
+        w.write_u32(5000);       // config.kill_timeout_ms
+        w.write_u8(1);           // config.autorestart
+        w.write_i32(15);         // config.max_restarts
+        w.write_u64(1000);       // config.min_uptime_ms
+        w.write_u32(100);        // config.restart_delay_ms
+        w.write_u8(0);           // config.exp_backoff
+        w.write_u64(150 * 1024 * 1024); // max_memory_restart
+        w.write_u8(1);           // watch
+        w.write_string("0 0 * * *"); // cron_restart
+        w.write_u8(1);           // wait_ready
+        w.write_u8(0);           // shutdown_with_message
+
+        let detail = decode_process_detail(&w.buf).unwrap();
+        assert_eq!(detail.id, 1);
+        assert_eq!(detail.name, "myapp");
+        assert_eq!(detail.pid, 1234);
+        assert_eq!(detail.status_str(), "running");
+        assert_eq!(detail.memory_bytes, 50 * 1024 * 1024);
+        assert_eq!(detail.uptime_ms, 120000);
+        assert_eq!(detail.restart_count, 3);
+        assert_eq!(detail.consecutive_crashes, 2);
+        assert_eq!(detail.last_restart_ms, 100000);
+        assert_eq!(detail.script, "app.js");
+        assert_eq!(detail.cwd, "/tmp");
+        assert_eq!(detail.interpreter, "node");
+        assert_eq!(detail.kill_timeout_ms, 5000);
+        assert!(detail.autorestart);
+        assert_eq!(detail.max_restarts, 15);
+        assert_eq!(detail.min_uptime_ms, 1000);
+        assert_eq!(detail.restart_delay_ms, 100);
+        assert!(!detail.exp_backoff);
+        assert_eq!(detail.max_memory_restart, 150 * 1024 * 1024);
+        assert!(detail.watch);
+        assert_eq!(detail.cron_restart, "0 0 * * *");
+        assert!(detail.wait_ready);
+        assert!(!detail.shutdown_with_message);
     }
 
     #[test]

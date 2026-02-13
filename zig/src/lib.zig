@@ -12,9 +12,14 @@ pub const collector_mod = @import("log/collector.zig");
 pub const writer_mod = @import("log/writer.zig");
 pub const ring_buffer_mod = @import("log/ring_buffer.zig");
 pub const persistence_mod = @import("state/persistence.zig");
+pub const watcher_mod = @import("watch/watcher.zig");
+pub const cron_mod = @import("cron/parser.zig");
+pub const ipc_channel_mod = @import("process/ipc_channel.zig");
 
 // Re-export types for tests
 const KqueueLoop = macos_mod.KqueueLoop;
+const Watcher = watcher_mod.Watcher;
+const CronExpr = cron_mod.CronExpr;
 const IpcServer = server_mod.IpcServer;
 const Supervisor = supervisor_mod.Supervisor;
 const ProcessConfig = supervisor_mod.ProcessConfig;
@@ -32,6 +37,10 @@ pub const VelosProcessConfig = extern struct {
     interpreter: ?[*:0]const u8, // NULL = auto
     kill_timeout_ms: u32, // default: 5000
     autorestart: bool,
+    max_restarts: i32 = 15, // -1 = unlimited
+    min_uptime_ms: u64 = 1000,
+    restart_delay_ms: u32 = 0,
+    exp_backoff: bool = false,
 };
 
 pub const VelosProcessInfo = extern struct {
@@ -130,6 +139,9 @@ export fn velos_daemon_init(
         &g_log_collector.?,
     ) catch return -7;
 
+    // Wire persistence to IPC server for state save/load
+    g_ipc_server.?.setPersistence(&g_persistence.?);
+
     // Register signals
     g_pal.?.addSignal(signals_mod.SIGCHLD) catch return -8;
     g_pal.?.addSignal(signals_mod.SIGTERM) catch return -8;
@@ -181,6 +193,39 @@ export fn velos_daemon_run() c_int {
         // Check pending kills
         g_supervisor.?.checkPendingKills();
 
+        // Check pending restarts (delayed/backoff autorestart)
+        g_supervisor.?.checkPendingRestarts();
+
+        // Register any new pipe fds from autorestart
+        const pending_fds = g_supervisor.?.drainPendingPipeFds();
+        if (pending_fds.len > 0) {
+            for (pending_fds) |fd| {
+                g_pal.?.addFd(fd, .pipe_read) catch {};
+            }
+            g_allocator.free(pending_fds);
+        }
+
+        // Periodic resource monitoring (every ~2s, checked inside)
+        g_supervisor.?.updateResourceUsage();
+
+        // Check watch mode — file changes trigger restart
+        g_supervisor.?.checkWatchers();
+
+        // Check cron-based restarts (once per minute)
+        g_supervisor.?.checkCronRestarts();
+
+        // Check wait_ready IPC channels
+        g_supervisor.?.checkWaitReady();
+
+        // Drain any new pipe fds from watch/cron restarts
+        const watch_fds = g_supervisor.?.drainPendingPipeFds();
+        if (watch_fds.len > 0) {
+            for (watch_fds) |fd| {
+                g_pal.?.addFd(fd, .pipe_read) catch {};
+            }
+            g_allocator.free(watch_fds);
+        }
+
         // Check if shutdown was requested via IPC
         if (g_ipc_server.?.isShutdownRequested()) {
             g_running = false;
@@ -221,6 +266,10 @@ export fn velos_process_start(config: ?*const VelosProcessConfig) c_int {
         .interpreter = if (cfg.interpreter) |i| std.mem.span(i) else null,
         .kill_timeout_ms = if (cfg.kill_timeout_ms == 0) 5000 else cfg.kill_timeout_ms,
         .autorestart = cfg.autorestart,
+        .max_restarts = cfg.max_restarts,
+        .min_uptime_ms = if (cfg.min_uptime_ms == 0) 1000 else cfg.min_uptime_ms,
+        .restart_delay_ms = cfg.restart_delay_ms,
+        .exp_backoff = cfg.exp_backoff,
     };
 
     const result = g_supervisor.?.startProcess(zig_config) catch return -3;
@@ -240,6 +289,28 @@ export fn velos_process_stop(process_id: u32, signal: c_int, timeout_ms: u32) c_
     const timeout = if (timeout_ms == 0) @as(u32, 5000) else timeout_ms;
 
     g_supervisor.?.stopProcess(process_id, sig, timeout) catch return -2;
+    return 0;
+}
+
+/// Restart a process. Returns 0 on success.
+export fn velos_process_restart(process_id: u32) c_int {
+    if (!g_initialized) return -1;
+
+    const result = g_supervisor.?.restartProcess(process_id) catch return -2;
+
+    // Register new pipe fds in event loop
+    g_pal.?.addFd(result.stdout_fd, .pipe_read) catch {};
+    g_pal.?.addFd(result.stderr_fd, .pipe_read) catch {};
+
+    // Also drain any pending pipe fds
+    const pending_fds = g_supervisor.?.drainPendingPipeFds();
+    if (pending_fds.len > 0) {
+        for (pending_fds) |fd| {
+            g_pal.?.addFd(fd, .pipe_read) catch {};
+        }
+        g_allocator.free(pending_fds);
+    }
+
     return 0;
 }
 
@@ -363,6 +434,45 @@ export fn velos_log_free(entries: ?[*]VelosLogEntry, count: u32) void {
     }
 }
 
+/// Save all process configs to state file. Returns 0 on success.
+export fn velos_state_save() c_int {
+    if (!g_initialized) return -1;
+    const p = &g_persistence.?;
+
+    const procs = g_supervisor.?.getAllConfigs() catch return -2;
+    defer g_allocator.free(procs);
+
+    p.saveState(procs) catch return -3;
+    return 0;
+}
+
+/// Load process configs from state file and start them. Returns number of processes started, negative on error.
+export fn velos_state_load() c_int {
+    if (!g_initialized) return -1;
+    const p = &g_persistence.?;
+
+    const configs = p.loadState() catch return -2;
+    defer {
+        for (configs) |cfg| {
+            g_allocator.free(cfg.name);
+            g_allocator.free(cfg.script);
+            g_allocator.free(cfg.cwd);
+            if (cfg.interpreter) |interp| g_allocator.free(interp);
+        }
+        g_allocator.free(configs);
+    }
+
+    var started: c_int = 0;
+    for (configs) |cfg| {
+        const result = g_supervisor.?.startProcess(cfg) catch continue;
+        g_pal.?.addFd(result.stdout_fd, .pipe_read) catch {};
+        g_pal.?.addFd(result.stderr_fd, .pipe_read) catch {};
+        started += 1;
+    }
+
+    return started;
+}
+
 // ============================================================
 // Tests - pull in all module tests
 // ============================================================
@@ -376,4 +486,7 @@ comptime {
     // Force test runner to include tests from sub-modules
     _ = ring_buffer_mod;
     _ = protocol_mod;
+    _ = watcher_mod;
+    _ = cron_mod;
+    _ = ipc_channel_mod;
 }

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  velos:
+    build: .
+    volumes:
+      - ./app:/app
+      - velos-data:/root/.velos
+    ports:
+      - "3100:3100"   # REST API
+      - "9615:9615"   # Prometheus metrics
+    restart: unless-stopped
+
+volumes:
+  velos-data:

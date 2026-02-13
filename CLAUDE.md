@@ -125,6 +125,19 @@ Examples of parallelizable work:
 - Unit tests for different modules
 - Documentation + implementation
 
+## Integration tests — ОБЯЗАТЕЛЬНЫ
+
+After completing each phase, you MUST add integration tests to `tests/integration_lifecycle.sh` covering all new user-facing features. This is NOT optional — phase is not complete until integration tests pass.
+
+Checklist:
+1. **Identify testable features** — every new CLI flag, IPC command, or behavior change needs a test
+2. **Add tests BEFORE the shutdown test** (always keep shutdown as the last test)
+3. **Renumber the shutdown test** accordingly
+4. **Run `make dev && bash tests/integration_lifecycle.sh`** to verify all tests pass
+5. **Update the test count** in the file header comment
+
+If a feature is untestable in non-interactive mode (e.g. TUI), document it as "[MANUAL]" in the phase task file.
+
 ## Common patterns
 
 When implementing a new CLI command:

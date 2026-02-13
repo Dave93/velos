@@ -1,0 +1,32 @@
+# Maintainer: Velos Team
+pkgname=velos
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="High-performance AI-friendly process manager"
+arch=('x86_64' 'aarch64')
+url="https://github.com/user/velos"
+license=('MIT')
+depends=()
+provides=('velos')
+conflicts=('velos-git')
+
+source_x86_64=("${url}/releases/download/v${pkgver}/velos-linux-x86_64")
+source_aarch64=("${url}/releases/download/v${pkgver}/velos-linux-arm64")
+
+sha256sums_x86_64=('PLACEHOLDER')
+sha256sums_aarch64=('PLACEHOLDER')
+
+package() {
+    install -Dm755 "${srcdir}/velos-linux-${CARCH/x86_64/x86_64}" "${pkgdir}/usr/bin/velos"
+
+    # Install shell completions if available
+    if [ -f "${srcdir}/completions/velos.bash" ]; then
+        install -Dm644 "${srcdir}/completions/velos.bash" "${pkgdir}/usr/share/bash-completion/completions/velos"
+    fi
+    if [ -f "${srcdir}/completions/velos.zsh" ]; then
+        install -Dm644 "${srcdir}/completions/velos.zsh" "${pkgdir}/usr/share/zsh/site-functions/_velos"
+    fi
+    if [ -f "${srcdir}/completions/velos.fish" ]; then
+        install -Dm644 "${srcdir}/completions/velos.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/velos.fish"
+    fi
+}

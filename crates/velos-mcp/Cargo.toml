@@ -1,0 +1,15 @@
+[package]
+name = "velos-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+velos-client = { path = "../velos-client" }
+velos-core = { path = "../velos-core" }
+velos-log-engine = { path = "../velos-log-engine" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+thiserror = "2"
+regex = "1"
