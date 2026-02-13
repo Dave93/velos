@@ -40,9 +40,6 @@ curl -fsSL https://raw.githubusercontent.com/Dave93/velos/main/distribution/inst
 # Specific version
 curl -fsSL https://raw.githubusercontent.com/Dave93/velos/main/distribution/install.sh | bash -s v0.1.0
 
-# Homebrew (macOS)
-brew install Dave93/tap/velos
-
 # From source (requires Zig 0.15+ and Rust 1.75+)
 git clone https://github.com/Dave93/velos.git
 cd velos
