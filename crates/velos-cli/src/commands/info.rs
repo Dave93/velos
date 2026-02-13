@@ -21,7 +21,10 @@ pub async fn run(name_or_id: String, json: bool, ai: bool) -> Result<(), VelosEr
     }
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&detail).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&detail).unwrap_or_default()
+        );
         return Ok(());
     }
 
@@ -41,13 +44,26 @@ pub async fn run(name_or_id: String, json: bool, ai: bool) -> Result<(), VelosEr
         println!("  Interpreter:    {}", detail.interpreter);
     }
     println!("  Autorestart:    {}", detail.autorestart);
-    println!("  Max restarts:   {}", if detail.max_restarts < 0 { "unlimited".to_string() } else { detail.max_restarts.to_string() });
+    println!(
+        "  Max restarts:   {}",
+        if detail.max_restarts < 0 {
+            "unlimited".to_string()
+        } else {
+            detail.max_restarts.to_string()
+        }
+    );
     println!("  Kill timeout:   {} ms", detail.kill_timeout_ms);
     if detail.exp_backoff {
-        println!("  Exp backoff:    true (delay: {} ms)", detail.restart_delay_ms);
+        println!(
+            "  Exp backoff:    true (delay: {} ms)",
+            detail.restart_delay_ms
+        );
     }
     if detail.max_memory_restart > 0 {
-        println!("  Max memory:     {}", format_bytes(detail.max_memory_restart));
+        println!(
+            "  Max memory:     {}",
+            format_bytes(detail.max_memory_restart)
+        );
     }
     if detail.watch {
         println!("  Watch mode:     enabled");

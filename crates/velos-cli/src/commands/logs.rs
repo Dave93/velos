@@ -46,9 +46,8 @@ pub async fn run(args: LogsArgs) -> Result<(), VelosError> {
 
     // Filter by grep pattern
     if let Some(ref pattern) = args.grep {
-        let re = regex::Regex::new(pattern).map_err(|e| {
-            VelosError::ProtocolError(format!("invalid grep pattern: {e}"))
-        })?;
+        let re = regex::Regex::new(pattern)
+            .map_err(|e| VelosError::ProtocolError(format!("invalid grep pattern: {e}")))?;
         processed.retain(|e| re.is_match(&e.message));
     }
 
@@ -66,8 +65,7 @@ pub async fn run(args: LogsArgs) -> Result<(), VelosError> {
     if args.summary {
         let detector = PatternDetector::with_defaults();
         let patterns = detector.detect(&processed);
-        let log_summary =
-            summary::generate_summary(&args.name, &processed, &patterns, &[], 0);
+        let log_summary = summary::generate_summary(&args.name, &processed, &patterns, &[], 0);
 
         if args.json || args.ai {
             println!(
@@ -127,10 +125,7 @@ pub async fn run(args: LogsArgs) -> Result<(), VelosError> {
                 })
             })
             .collect();
-        println!(
-            "{}",
-            serde_json::to_string(&compact).unwrap_or_default()
-        );
+        println!("{}", serde_json::to_string(&compact).unwrap_or_default());
         return Ok(());
     }
 
@@ -159,7 +154,7 @@ fn parse_time_spec(spec: &str) -> Result<u64, VelosError> {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_millis() as u64;
-        return Ok(now - hours * 3600_000);
+        return Ok(now - hours * 3_600_000);
     }
     if let Some(num_str) = spec.strip_suffix('m') {
         let mins: u64 = num_str
@@ -179,7 +174,7 @@ fn parse_time_spec(spec: &str) -> Result<u64, VelosError> {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_millis() as u64;
-        return Ok(now - days * 86400_000);
+        return Ok(now - days * 86_400_000);
     }
     if let Some(num_str) = spec.strip_suffix('s') {
         let secs: u64 = num_str

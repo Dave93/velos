@@ -81,10 +81,7 @@ impl VelosClient {
 
     /// Ping the daemon. Returns the raw pong message.
     pub async fn ping(&mut self) -> Result<String, VelosError> {
-        let resp = self
-            .conn
-            .request(CommandCode::Ping, Vec::new())
-            .await?;
+        let resp = self.conn.request(CommandCode::Ping, Vec::new()).await?;
         self.check_response(&resp)?;
         Ok(String::from_utf8_lossy(&resp.payload).to_string())
     }
@@ -130,7 +127,11 @@ impl VelosClient {
     }
 
     /// Scale a cluster to a target instance count.
-    pub async fn scale(&mut self, name: &str, target_count: u32) -> Result<ScaleResult, VelosError> {
+    pub async fn scale(
+        &mut self,
+        name: &str,
+        target_count: u32,
+    ) -> Result<ScaleResult, VelosError> {
         let payload = ScalePayload {
             name: name.to_string(),
             target_count,
@@ -145,19 +146,14 @@ impl VelosClient {
 
     /// Shutdown the daemon.
     pub async fn shutdown(&mut self) -> Result<(), VelosError> {
-        let resp = self
-            .conn
-            .request(CommandCode::Shutdown, Vec::new())
-            .await?;
+        let resp = self.conn.request(CommandCode::Shutdown, Vec::new()).await?;
         self.check_response(&resp)
     }
 
     fn check_response(&self, resp: &Response) -> Result<(), VelosError> {
         match resp.status {
             ResponseStatus::Ok | ResponseStatus::Streaming => Ok(()),
-            ResponseStatus::Error => {
-                Err(VelosError::ProtocolError(resp.error_message()))
-            }
+            ResponseStatus::Error => Err(VelosError::ProtocolError(resp.error_message())),
         }
     }
 }

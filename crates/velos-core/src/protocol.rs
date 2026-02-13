@@ -16,6 +16,12 @@ pub struct BinaryWriter {
     pub buf: Vec<u8>,
 }
 
+impl Default for BinaryWriter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BinaryWriter {
     pub fn new() -> Self {
         Self { buf: Vec::new() }
@@ -118,8 +124,13 @@ impl<'a> BinaryReader<'a> {
 pub fn encode_header(payload_len: u32) -> [u8; HEADER_SIZE] {
     let len_bytes = payload_len.to_le_bytes();
     [
-        MAGIC[0], MAGIC[1], VERSION,
-        len_bytes[0], len_bytes[1], len_bytes[2], len_bytes[3],
+        MAGIC[0],
+        MAGIC[1],
+        VERSION,
+        len_bytes[0],
+        len_bytes[1],
+        len_bytes[2],
+        len_bytes[3],
     ]
 }
 
@@ -224,7 +235,11 @@ impl Response {
             crate::VelosError::ProtocolError(format!("unknown response status: {}", body[4]))
         })?;
         let payload = body[5..].to_vec();
-        Ok(Self { id, status, payload })
+        Ok(Self {
+            id,
+            status,
+            payload,
+        })
     }
 
     pub fn error_message(&self) -> String {
@@ -686,29 +701,29 @@ mod tests {
     fn test_process_detail_decode() {
         // Matches Zig handleProcessInfo encoding order
         let mut w = BinaryWriter::new();
-        w.write_u32(1);          // id
+        w.write_u32(1); // id
         w.write_string("myapp"); // name
-        w.write_u32(1234);      // pid
-        w.write_u8(1);          // status = running
+        w.write_u32(1234); // pid
+        w.write_u8(1); // status = running
         w.write_u64(50 * 1024 * 1024); // memory_bytes
-        w.write_u64(120000);    // uptime_ms
-        w.write_u32(3);         // restart_count
-        w.write_u32(2);         // consecutive_crashes
-        w.write_u64(100000);    // last_restart_ms
+        w.write_u64(120000); // uptime_ms
+        w.write_u32(3); // restart_count
+        w.write_u32(2); // consecutive_crashes
+        w.write_u64(100000); // last_restart_ms
         w.write_string("app.js"); // config.script
-        w.write_string("/tmp");   // config.cwd
-        w.write_string("node");   // config.interpreter
-        w.write_u32(5000);       // config.kill_timeout_ms
-        w.write_u8(1);           // config.autorestart
-        w.write_i32(15);         // config.max_restarts
-        w.write_u64(1000);       // config.min_uptime_ms
-        w.write_u32(100);        // config.restart_delay_ms
-        w.write_u8(0);           // config.exp_backoff
+        w.write_string("/tmp"); // config.cwd
+        w.write_string("node"); // config.interpreter
+        w.write_u32(5000); // config.kill_timeout_ms
+        w.write_u8(1); // config.autorestart
+        w.write_i32(15); // config.max_restarts
+        w.write_u64(1000); // config.min_uptime_ms
+        w.write_u32(100); // config.restart_delay_ms
+        w.write_u8(0); // config.exp_backoff
         w.write_u64(150 * 1024 * 1024); // max_memory_restart
-        w.write_u8(1);           // watch
+        w.write_u8(1); // watch
         w.write_string("0 0 * * *"); // cron_restart
-        w.write_u8(1);           // wait_ready
-        w.write_u8(0);           // shutdown_with_message
+        w.write_u8(1); // wait_ready
+        w.write_u8(0); // shutdown_with_message
 
         let detail = decode_process_detail(&w.buf).unwrap();
         assert_eq!(detail.id, 1);

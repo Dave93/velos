@@ -2,7 +2,9 @@ use std::io;
 use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use crossterm::ExecutableCommand;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
@@ -58,9 +60,12 @@ pub async fn run() -> Result<(), VelosError> {
     // Setup terminal
     enable_raw_mode().map_err(|e| VelosError::ProtocolError(format!("terminal: {e}")))?;
     let mut stdout = io::stdout();
-    stdout.execute(EnterAlternateScreen).map_err(|e| VelosError::ProtocolError(format!("terminal: {e}")))?;
+    stdout
+        .execute(EnterAlternateScreen)
+        .map_err(|e| VelosError::ProtocolError(format!("terminal: {e}")))?;
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend).map_err(|e| VelosError::ProtocolError(format!("terminal: {e}")))?;
+    let mut terminal =
+        Terminal::new(backend).map_err(|e| VelosError::ProtocolError(format!("terminal: {e}")))?;
 
     let result = run_loop(&mut terminal, &mut state).await;
 
@@ -178,7 +183,7 @@ async fn run_loop(
                 for (i, p) in state.processes.iter().enumerate() {
                     if i < state.mem_history.len() {
                         state.mem_history[i].push(p.memory / 1024); // KB for sparkline
-                        // Keep last 60 samples (2 minutes at 2s interval)
+                                                                    // Keep last 60 samples (2 minutes at 2s interval)
                         if state.mem_history[i].len() > 60 {
                             state.mem_history[i].remove(0);
                         }
@@ -193,7 +198,7 @@ fn draw_ui(f: &mut ratatui::Frame, state: &AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // header
+            Constraint::Length(3), // header
             Constraint::Min(8),    // process table
             Constraint::Length(3), // memory bar
             Constraint::Min(5),    // logs
@@ -209,15 +214,23 @@ fn draw_ui(f: &mut ratatui::Frame, state: &AppState) {
         format_bytes(total_mem)
     );
     let header = Paragraph::new(header_text)
-        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(header, chunks[0]);
 
     // Process table
-    let selected_style = Style::default().bg(Color::DarkGray).add_modifier(Modifier::BOLD);
-    let header_cells = ["ID", "Name", "PID", "Status", "Memory", "Uptime", "Restarts"]
-        .iter()
-        .map(|h| Cell::from(*h).style(Style::default().fg(Color::Yellow)));
+    let selected_style = Style::default()
+        .bg(Color::DarkGray)
+        .add_modifier(Modifier::BOLD);
+    let header_cells = [
+        "ID", "Name", "PID", "Status", "Memory", "Uptime", "Restarts",
+    ]
+    .iter()
+    .map(|h| Cell::from(*h).style(Style::default().fg(Color::Yellow)));
     let header_row = Row::new(header_cells).height(1);
 
     let rows: Vec<Row> = state
@@ -305,13 +318,14 @@ fn draw_ui(f: &mut ratatui::Frame, state: &AppState) {
     } else {
         "Logs".to_string()
     };
-    let logs_widget = Paragraph::new(log_lines)
-        .block(Block::default().borders(Borders::ALL).title(log_title));
+    let logs_widget =
+        Paragraph::new(log_lines).block(Block::default().borders(Borders::ALL).title(log_title));
     f.render_widget(logs_widget, chunks[3]);
 
     // Footer
-    let footer = Paragraph::new(" [q]uit  [\u{2191}\u{2193}]select  [l]ogs  [r]estart  [s]top  [d]elete")
-        .style(Style::default().fg(Color::DarkGray));
+    let footer =
+        Paragraph::new(" [q]uit  [\u{2191}\u{2193}]select  [l]ogs  [r]estart  [s]top  [d]elete")
+            .style(Style::default().fg(Color::DarkGray));
     f.render_widget(footer, chunks[4]);
 }
 
@@ -321,20 +335,20 @@ fn format_bytes(bytes: u64) -> String {
     }
     let kb = bytes as f64 / 1024.0;
     if kb < 1024.0 {
-        return format!("{:.0} KB", kb);
+        return format!("{kb:.0} KB");
     }
     let mb = kb / 1024.0;
     if mb < 1024.0 {
-        return format!("{:.1} MB", mb);
+        return format!("{mb:.1} MB");
     }
     let gb = mb / 1024.0;
-    format!("{:.2} GB", gb)
+    format!("{gb:.2} GB")
 }
 
 fn format_uptime(ms: u64) -> String {
     let secs = ms / 1000;
     if secs < 60 {
-        format!("{}s", secs)
+        format!("{secs}s")
     } else if secs < 3600 {
         format!("{}m {}s", secs / 60, secs % 60)
     } else if secs < 86400 {

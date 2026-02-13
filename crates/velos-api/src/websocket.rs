@@ -20,10 +20,7 @@ pub fn router() -> Router {
     Router::new().route("/ws", get(move |ws| ws_handler(ws, tx.clone())))
 }
 
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    tx: Arc<broadcast::Sender<String>>,
-) -> impl IntoResponse {
+async fn ws_handler(ws: WebSocketUpgrade, tx: Arc<broadcast::Sender<String>>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, tx))
 }
 

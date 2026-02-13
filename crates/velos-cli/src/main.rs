@@ -277,7 +277,11 @@ async fn main() {
         Commands::Restart { name_or_id, json } => commands::restart::run(name_or_id, json).await,
         Commands::Reload { name_or_id, json } => commands::reload::run(name_or_id, json).await,
         Commands::List { json, ai } => commands::list::run(json, ai).await,
-        Commands::Info { name_or_id, json, ai } => commands::info::run(name_or_id, json, ai).await,
+        Commands::Info {
+            name_or_id,
+            json,
+            ai,
+        } => commands::info::run(name_or_id, json, ai).await,
         Commands::Logs {
             name,
             lines,
@@ -310,20 +314,24 @@ async fn main() {
         Commands::Flush { name_or_id, json } => commands::flush::run(name_or_id, json).await,
         Commands::Scale { name, count, json } => commands::scale::run(name, count, json).await,
         Commands::Api { port, token } => commands::api::run(port, token).await,
-        Commands::Metrics { port, otel_endpoint } => commands::metrics::run(port, otel_endpoint).await,
+        Commands::Metrics {
+            port,
+            otel_endpoint,
+        } => commands::metrics::run(port, otel_endpoint).await,
         Commands::Startup => commands::startup::run_startup().await,
         Commands::Unstartup => commands::startup::run_unstartup().await,
         Commands::Monit => commands::monit::run().await,
         Commands::McpServer => {
             let server = velos_mcp::server::McpServer::new();
-            server.run().await.map_err(|e| {
-                velos_core::VelosError::ProtocolError(e.to_string())
-            })
+            server
+                .run()
+                .await
+                .map_err(|e| velos_core::VelosError::ProtocolError(e.to_string()))
         }
         Commands::Ping => commands::ping::run().await,
         Commands::PingFfi => {
             let response = velos_ffi::ping();
-            println!("{}", response);
+            println!("{response}");
             Ok(())
         }
         Commands::Completions { shell } => commands::completions::run(shell),

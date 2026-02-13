@@ -9,7 +9,10 @@ pub async fn run(name_or_id: String, json: bool) -> Result<(), VelosError> {
     }
 
     if json {
-        let stopped: Vec<_> = ids.iter().map(|id| serde_json::json!({ "stopped": id })).collect();
+        let stopped: Vec<_> = ids
+            .iter()
+            .map(|id| serde_json::json!({ "stopped": id }))
+            .collect();
         println!("{}", serde_json::to_string(&stopped).unwrap_or_default());
     } else if ids.len() > 1 {
         println!(

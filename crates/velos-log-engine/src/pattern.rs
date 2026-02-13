@@ -173,7 +173,12 @@ mod tests {
     fn test_detect_patterns() {
         let detector = PatternDetector::new(3, 60);
         let entries: Vec<ProcessedEntry> = (0..10)
-            .map(|i| make_entry(&format!("Connection to 10.0.0.{}:5432 failed", i), 1000 + i * 1000))
+            .map(|i| {
+                make_entry(
+                    &format!("Connection to 10.0.0.{i}:5432 failed"),
+                    1000 + i * 1000,
+                )
+            })
             .collect();
         let patterns = detector.detect(&entries);
         assert_eq!(patterns.len(), 1);

@@ -27,7 +27,9 @@ pub async fn execute(tool_name: &str, arguments: Value) -> Result<String, VelosE
 // --- Helpers ---
 
 fn get_string(args: &Value, key: &str) -> Option<String> {
-    args.get(key).and_then(|v| v.as_str()).map(|s| s.to_string())
+    args.get(key)
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
 }
 
 fn get_u32(args: &Value, key: &str) -> Option<u32> {
@@ -85,8 +87,12 @@ async fn process_start(args: Value) -> Result<String, VelosError> {
             .unwrap_or("app")
             .to_string()
     });
-    let cwd = get_string(&args, "cwd")
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default().to_string_lossy().to_string());
+    let cwd = get_string(&args, "cwd").unwrap_or_else(|| {
+        std::env::current_dir()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string()
+    });
     let interpreter = get_string(&args, "interpreter");
 
     let payload = StartPayload {
@@ -128,7 +134,10 @@ async fn process_stop(args: Value) -> Result<String, VelosError> {
     let mut client = connect().await?;
     let id = resolve_id(&mut client, &name_or_id).await?;
     client.stop(id).await?;
-    Ok(serde_json::json!({"success": true, "message": format!("stopped {name_or_id}")}).to_string())
+    Ok(
+        serde_json::json!({"success": true, "message": format!("stopped {name_or_id}")})
+            .to_string(),
+    )
 }
 
 async fn process_restart(args: Value) -> Result<String, VelosError> {

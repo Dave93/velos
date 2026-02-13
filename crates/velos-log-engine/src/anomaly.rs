@@ -71,11 +71,7 @@ impl SlidingWindow {
             return 0.0;
         }
         let mean = self.mean();
-        let variance: f64 = self
-            .values
-            .iter()
-            .map(|v| (v - mean).powi(2))
-            .sum::<f64>()
+        let variance: f64 = self.values.iter().map(|v| (v - mean).powi(2)).sum::<f64>()
             / (self.values.len() - 1) as f64;
         variance.sqrt()
     }

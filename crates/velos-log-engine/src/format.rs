@@ -3,7 +3,11 @@ use crate::ProcessedEntry;
 /// Format a log entry as structured JSON Line.
 /// Output: `{"ts":1707734400000,"lvl":"info","pid":0,"msg":"Server started","src":"stdout"}`
 pub fn format_structured(entry: &ProcessedEntry, pid: u32) -> String {
-    let src = if entry.stream == 1 { "stderr" } else { "stdout" };
+    let src = if entry.stream == 1 {
+        "stderr"
+    } else {
+        "stdout"
+    };
     serde_json::json!({
         "ts": entry.timestamp_ms,
         "lvl": entry.level.as_str(),
@@ -41,7 +45,7 @@ fn format_timestamp(ms: u64) -> String {
     let h = secs / 3600;
     let m = (secs % 3600) / 60;
     let s = secs % 60;
-    format!("{:02}:{:02}:{:02}", h, m, s)
+    format!("{h:02}:{m:02}:{s:02}")
 }
 
 #[cfg(test)]

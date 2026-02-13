@@ -25,7 +25,10 @@ pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
     }
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&procs).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&procs).unwrap_or_default()
+        );
         return Ok(());
     }
 
@@ -35,7 +38,9 @@ pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
     }
 
     let mut table = Table::new();
-    table.set_header(vec!["ID", "Name", "PID", "Status", "Memory", "Uptime", "Restarts"]);
+    table.set_header(vec![
+        "ID", "Name", "PID", "Status", "Memory", "Uptime", "Restarts",
+    ]);
 
     for p in &procs {
         table.add_row(vec![

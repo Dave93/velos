@@ -209,12 +209,12 @@ where
             if let toml::Value::Table(table) = value {
                 let env_map: HashMap<String, String> = table
                     .into_iter()
-                    .filter_map(|(k, v)| {
+                    .map(|(k, v)| {
                         let s = match v {
                             toml::Value::String(s) => s,
                             other => other.to_string(),
                         };
-                        Some((k, s))
+                        (k, s)
                     })
                     .collect();
                 profiles.insert(profile_name.to_string(), env_map);
@@ -283,25 +283,21 @@ fn validate_app(key: &str, app: &AppConfig) -> Result<()> {
 
     // Name must be non-empty, alphanumeric + dash + underscore.
     if name.is_empty() {
-        return Err(ConfigError::Validation(
-            "app name must not be empty".into(),
-        ));
+        return Err(ConfigError::Validation("app name must not be empty".into()));
     }
     if !name
         .chars()
         .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
     {
         return Err(ConfigError::Validation(format!(
-            "app name '{}' contains invalid characters (only alphanumeric, dash, underscore allowed)",
-            name
+            "app name '{name}' contains invalid characters (only alphanumeric, dash, underscore allowed)"
         )));
     }
 
     // Script must be non-empty.
     if app.script.is_empty() {
         return Err(ConfigError::Validation(format!(
-            "app '{}': script must not be empty",
-            name
+            "app '{name}': script must not be empty"
         )));
     }
 
@@ -325,8 +321,7 @@ fn validate_app(key: &str, app: &AppConfig) -> Result<()> {
     if let Some(ref mem) = app.max_memory_restart {
         parse_memory_string(mem).map_err(|_| {
             ConfigError::Validation(format!(
-                "app '{}': invalid max_memory_restart format: '{}'",
-                name, mem
+                "app '{name}': invalid max_memory_restart format: '{mem}'"
             ))
         })?;
     }
@@ -335,8 +330,7 @@ fn validate_app(key: &str, app: &AppConfig) -> Result<()> {
     if let Some(ref size) = app.log_max_size {
         parse_memory_string(size).map_err(|_| {
             ConfigError::Validation(format!(
-                "app '{}': invalid log_max_size format: '{}'",
-                name, size
+                "app '{name}': invalid log_max_size format: '{size}'"
             ))
         })?;
     }
@@ -402,7 +396,7 @@ pub fn parse_memory_string(s: &str) -> std::result::Result<u64, ConfigError> {
     let num: u64 = num_part
         .trim()
         .parse()
-        .map_err(|_| ConfigError::InvalidMemory(format!("cannot parse number: '{}'", num_part)))?;
+        .map_err(|_| ConfigError::InvalidMemory(format!("cannot parse number: '{num_part}'")))?;
 
     Ok(num * multiplier)
 }
@@ -539,7 +533,7 @@ DATABASE_URL = "postgres://localhost:5432/db"
         assert_eq!(api.script, "server.js");
         assert_eq!(api.cwd.as_deref(), Some("/app"));
         assert_eq!(api.interpreter.as_deref(), Some("node"));
-        assert_eq!(api.autorestart, true);
+        assert!(api.autorestart);
         assert_eq!(api.max_restarts, 15);
         assert_eq!(api.kill_timeout, 5000);
         assert_eq!(api.instances, 1);
@@ -569,10 +563,7 @@ DATABASE_URL = "postgres://localhost:5432/db"
         let prod = merged_env(api, Some("production"));
         assert_eq!(prod.get("NODE_ENV").unwrap(), "production");
         assert_eq!(prod.get("PORT").unwrap(), "3000");
-        assert_eq!(
-            prod.get("DATABASE_URL").unwrap(),
-            "postgres://prod:5432/db"
-        );
+        assert_eq!(prod.get("DATABASE_URL").unwrap(), "postgres://prod:5432/db");
 
         // Development profile: overrides NODE_ENV, adds DATABASE_URL.
         let dev = merged_env(api, Some("development"));
@@ -587,10 +578,7 @@ DATABASE_URL = "postgres://localhost:5432/db"
     fn parse_memory_strings() {
         assert_eq!(parse_memory_string("512K").unwrap(), 512 * 1024);
         assert_eq!(parse_memory_string("150M").unwrap(), 150 * 1024 * 1024);
-        assert_eq!(
-            parse_memory_string("1G").unwrap(),
-            1024 * 1024 * 1024
-        );
+        assert_eq!(parse_memory_string("1G").unwrap(), 1024 * 1024 * 1024);
         assert_eq!(parse_memory_string("1024").unwrap(), 1024);
         assert_eq!(parse_memory_string("100B").unwrap(), 100);
         assert_eq!(parse_memory_string("2g").unwrap(), 2 * 1024 * 1024 * 1024);

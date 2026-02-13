@@ -33,7 +33,12 @@ pub fn init_tracer_provider(endpoint: &str) -> Result<SdkTracerProvider, VelosEr
 }
 
 /// Record a process lifecycle event as a span.
-pub fn record_lifecycle_event(provider: &SdkTracerProvider, event: &str, process_name: &str, process_id: u32) {
+pub fn record_lifecycle_event(
+    provider: &SdkTracerProvider,
+    event: &str,
+    process_name: &str,
+    process_id: u32,
+) {
     let tracer = provider.tracer("velos");
     tracer.in_span(format!("process.{event}"), |cx| {
         let span = cx.span();

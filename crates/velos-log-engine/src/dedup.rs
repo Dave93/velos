@@ -18,14 +18,14 @@ pub fn normalize(message: &str) -> String {
     use regex::Regex;
     use std::sync::LazyLock;
 
-    static RE_UUID: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap());
+    static RE_UUID: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+            .unwrap()
+    });
     static RE_IP: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?").unwrap());
-    static RE_HEX: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
-    static RE_NUM: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"\d{2,}").unwrap());
+    static RE_HEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
+    static RE_NUM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\d{2,}").unwrap());
 
     let s = RE_UUID.replace_all(message, "<UUID>");
     let s = RE_IP.replace_all(&s, "<IP>");
@@ -127,7 +127,10 @@ pub fn format_dedup_result(r: &DedupResult) -> String {
     if r.count > 1 {
         let first = crate::format::format_timestamp_short(r.first_seen_ms);
         let last = crate::format::format_timestamp_short(r.last_seen_ms);
-        format!("{} (x{}, first: {}, last: {})", r.sample, r.count, first, last)
+        format!(
+            "{} (x{}, first: {}, last: {})",
+            r.sample, r.count, first, last
+        )
     } else {
         r.sample.clone()
     }
@@ -163,10 +166,7 @@ mod tests {
 
     #[test]
     fn test_normalize_hex() {
-        assert_eq!(
-            normalize("Segfault at 0xDEADBEEF"),
-            "Segfault at <HEX>"
-        );
+        assert_eq!(normalize("Segfault at 0xDEADBEEF"), "Segfault at <HEX>");
     }
 
     #[test]

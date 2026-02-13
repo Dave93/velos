@@ -2,10 +2,7 @@ use std::ffi::{c_char, c_int, CStr, CString};
 
 extern "C" {
     fn velos_ping() -> *const c_char;
-    fn velos_daemon_init(
-        socket_path: *const c_char,
-        state_dir: *const c_char,
-    ) -> c_int;
+    fn velos_daemon_init(socket_path: *const c_char, state_dir: *const c_char) -> c_int;
     fn velos_daemon_run() -> c_int;
     fn velos_daemon_shutdown() -> c_int;
 }
@@ -17,10 +14,7 @@ pub fn ping() -> String {
     }
 }
 
-pub fn daemon_init(
-    socket_path: Option<&str>,
-    state_dir: Option<&str>,
-) -> Result<(), i32> {
+pub fn daemon_init(socket_path: Option<&str>, state_dir: Option<&str>) -> Result<(), i32> {
     let sock_c = socket_path.map(|s| CString::new(s).unwrap());
     let dir_c = state_dir.map(|s| CString::new(s).unwrap());
 

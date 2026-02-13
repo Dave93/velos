@@ -161,14 +161,15 @@ impl McpServer {
             data: None,
         })?;
 
-        let tool_name = params
-            .get("name")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| JsonRpcError {
-                code: -32602,
-                message: "Missing tool name".into(),
-                data: None,
-            })?;
+        let tool_name =
+            params
+                .get("name")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| JsonRpcError {
+                    code: -32602,
+                    message: "Missing tool name".into(),
+                    data: None,
+                })?;
 
         let arguments = params
             .get("arguments")

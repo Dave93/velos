@@ -18,20 +18,18 @@ pub async fn run(name: String, count_str: String, json: bool) -> Result<(), Velo
                 "stopped": result.stopped,
             })
         );
+    } else if result.started > 0 {
+        println!(
+            "[velos] Scaled '{}' up: +{} instances (target={})",
+            name, result.started, target_count
+        );
+    } else if result.stopped > 0 {
+        println!(
+            "[velos] Scaled '{}' down: -{} instances (target={})",
+            name, result.stopped, target_count
+        );
     } else {
-        if result.started > 0 {
-            println!(
-                "[velos] Scaled '{}' up: +{} instances (target={})",
-                name, result.started, target_count
-            );
-        } else if result.stopped > 0 {
-            println!(
-                "[velos] Scaled '{}' down: -{} instances (target={})",
-                name, result.stopped, target_count
-            );
-        } else {
-            println!("[velos] '{}' already at {} instances", name, target_count);
-        }
+        println!("[velos] '{name}' already at {target_count} instances");
     }
 
     Ok(())

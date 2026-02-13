@@ -176,8 +176,7 @@ fn parse_instances(instances_arg: &Option<String>) -> Result<u32, VelosError> {
             } else {
                 s.parse::<u32>().map_err(|_| {
                     VelosError::ProtocolError(format!(
-                        "invalid instances value '{}': use a number or 'max'",
-                        s
+                        "invalid instances value '{s}': use a number or 'max'"
                     ))
                 })
             }

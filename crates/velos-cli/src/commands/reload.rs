@@ -19,7 +19,10 @@ pub async fn run(name_or_id: String, json: bool) -> Result<(), VelosError> {
             reloaded.push(serde_json::json!({ "id": p.id, "name": p.name }));
         }
         if json {
-            println!("{}", serde_json::to_string_pretty(&reloaded).unwrap_or_default());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&reloaded).unwrap_or_default()
+            );
         } else {
             for p in &procs {
                 println!("[velos] Reloaded '{}' (id={})", p.name, p.id);
@@ -34,7 +37,7 @@ pub async fn run(name_or_id: String, json: bool) -> Result<(), VelosError> {
     if json {
         println!("{}", serde_json::json!({ "reloaded": id }));
     } else {
-        println!("[velos] Reloaded process '{}' (id={})", name_or_id, id);
+        println!("[velos] Reloaded process '{name_or_id}' (id={id})");
     }
 
     Ok(())

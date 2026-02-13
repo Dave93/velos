@@ -63,11 +63,11 @@ pub fn generate_summary(
             period_end = e.timestamp_ms;
         }
 
-        if matches!(e.level, LogLevel::Error | LogLevel::Fatal) {
-            if last_error_ms.map_or(true, |ts| e.timestamp_ms > ts) {
-                last_error = Some(e.message.clone());
-                last_error_ms = Some(e.timestamp_ms);
-            }
+        if matches!(e.level, LogLevel::Error | LogLevel::Fatal)
+            && last_error_ms.is_none_or(|ts| e.timestamp_ms > ts)
+        {
+            last_error = Some(e.message.clone());
+            last_error_ms = Some(e.timestamp_ms);
         }
     }
 
@@ -78,8 +78,7 @@ pub fn generate_summary(
     let top_patterns: Vec<PatternSummary> = patterns.iter().take(5).map(|p| p.into()).collect();
 
     let health_score = compute_health_score(
-        by_level.get("error").copied().unwrap_or(0)
-            + by_level.get("fatal").copied().unwrap_or(0),
+        by_level.get("error").copied().unwrap_or(0) + by_level.get("fatal").copied().unwrap_or(0),
         anomalies.len() as u64,
         restart_count as u64,
     );
@@ -142,7 +141,11 @@ pub fn format_summary(s: &LogSummary) -> String {
         } else {
             "unknown".to_string()
         };
-        out.push_str(&format!("Last error: \"{}\" ({} ago)\n", truncate(err, 60), ago));
+        out.push_str(&format!(
+            "Last error: \"{}\" ({} ago)\n",
+            truncate(err, 60),
+            ago
+        ));
     }
 
     for a in &s.anomalies {
@@ -171,7 +174,7 @@ fn format_period(start_ms: u64, end_ms: u64) -> String {
 fn format_duration(ms: u64) -> String {
     let secs = ms / 1000;
     if secs < 60 {
-        format!("{}s", secs)
+        format!("{secs}s")
     } else if secs < 3600 {
         format!("{}m", secs / 60)
     } else if secs < 86400 {

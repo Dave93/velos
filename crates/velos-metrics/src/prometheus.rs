@@ -50,21 +50,22 @@ pub async fn serve(port: u16, poll_interval: Duration) -> Result<(), velos_core:
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     println!("Prometheus metrics server listening on http://{addr}/metrics");
 
-    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
-        velos_core::VelosError::ProtocolError(format!("bind error: {e}"))
-    })?;
-    axum::serve(listener, app).await.map_err(|e| {
-        velos_core::VelosError::ProtocolError(format!("server error: {e}"))
-    })
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .map_err(|e| velos_core::VelosError::ProtocolError(format!("bind error: {e}")))?;
+    axum::serve(listener, app)
+        .await
+        .map_err(|e| velos_core::VelosError::ProtocolError(format!("server error: {e}")))
 }
 
-async fn metrics_handler(
-    State(state): State<Arc<RwLock<MetricsState>>>,
-) -> impl IntoResponse {
+async fn metrics_handler(State(state): State<Arc<RwLock<MetricsState>>>) -> impl IntoResponse {
     let snap = state.read().await;
     let body = format_metrics(&snap.processes);
     (
-        [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4; charset=utf-8")],
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4; charset=utf-8",
+        )],
         body,
     )
 }
@@ -74,30 +75,82 @@ fn format_metrics(processes: &[ProcessInfo]) -> String {
 
     // --- per-process metrics ---
 
-    write_help_type(&mut out, "velos_process_cpu_percent", "CPU usage percentage", "gauge");
+    write_help_type(
+        &mut out,
+        "velos_process_cpu_percent",
+        "CPU usage percentage",
+        "gauge",
+    );
     for p in processes {
         // CPU is not available from the list endpoint; emit 0 as placeholder.
         // A future MetricsGet IPC command can provide real CPU data.
-        writeln!(out, "velos_process_cpu_percent{{name=\"{}\",instance=\"{}\"}} 0", escape(&p.name), p.id).ok();
+        writeln!(
+            out,
+            "velos_process_cpu_percent{{name=\"{}\",instance=\"{}\"}} 0",
+            escape(&p.name),
+            p.id
+        )
+        .ok();
     }
 
-    write_help_type(&mut out, "velos_process_memory_bytes", "Resident memory in bytes", "gauge");
+    write_help_type(
+        &mut out,
+        "velos_process_memory_bytes",
+        "Resident memory in bytes",
+        "gauge",
+    );
     for p in processes {
-        writeln!(out, "velos_process_memory_bytes{{name=\"{}\",instance=\"{}\"}} {}", escape(&p.name), p.id, p.memory_bytes).ok();
+        writeln!(
+            out,
+            "velos_process_memory_bytes{{name=\"{}\",instance=\"{}\"}} {}",
+            escape(&p.name),
+            p.id,
+            p.memory_bytes
+        )
+        .ok();
     }
 
-    write_help_type(&mut out, "velos_process_uptime_seconds", "Process uptime in seconds", "gauge");
+    write_help_type(
+        &mut out,
+        "velos_process_uptime_seconds",
+        "Process uptime in seconds",
+        "gauge",
+    );
     for p in processes {
         let secs = p.uptime_ms as f64 / 1000.0;
-        writeln!(out, "velos_process_uptime_seconds{{name=\"{}\",instance=\"{}\"}} {:.3}", escape(&p.name), p.id, secs).ok();
+        writeln!(
+            out,
+            "velos_process_uptime_seconds{{name=\"{}\",instance=\"{}\"}} {:.3}",
+            escape(&p.name),
+            p.id,
+            secs
+        )
+        .ok();
     }
 
-    write_help_type(&mut out, "velos_process_restart_total", "Total restart count", "counter");
+    write_help_type(
+        &mut out,
+        "velos_process_restart_total",
+        "Total restart count",
+        "counter",
+    );
     for p in processes {
-        writeln!(out, "velos_process_restart_total{{name=\"{}\",instance=\"{}\"}} {}", escape(&p.name), p.id, p.restart_count).ok();
+        writeln!(
+            out,
+            "velos_process_restart_total{{name=\"{}\",instance=\"{}\"}} {}",
+            escape(&p.name),
+            p.id,
+            p.restart_count
+        )
+        .ok();
     }
 
-    write_help_type(&mut out, "velos_process_status", "Process status (0=stopped, 1=online, 2=errored)", "gauge");
+    write_help_type(
+        &mut out,
+        "velos_process_status",
+        "Process status (0=stopped, 1=online, 2=errored)",
+        "gauge",
+    );
     for p in processes {
         let status_val = match p.status {
             0 => 0, // stopped
@@ -106,12 +159,24 @@ fn format_metrics(processes: &[ProcessInfo]) -> String {
             3 => 1, // starting → treat as online
             _ => 0,
         };
-        writeln!(out, "velos_process_status{{name=\"{}\",instance=\"{}\"}} {}", escape(&p.name), p.id, status_val).ok();
+        writeln!(
+            out,
+            "velos_process_status{{name=\"{}\",instance=\"{}\"}} {}",
+            escape(&p.name),
+            p.id,
+            status_val
+        )
+        .ok();
     }
 
     // --- daemon-level metrics ---
 
-    write_help_type(&mut out, "velos_daemon_processes_total", "Number of managed processes", "gauge");
+    write_help_type(
+        &mut out,
+        "velos_daemon_processes_total",
+        "Number of managed processes",
+        "gauge",
+    );
     writeln!(out, "velos_daemon_processes_total {}", processes.len()).ok();
 
     out

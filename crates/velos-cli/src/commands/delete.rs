@@ -9,7 +9,7 @@ pub async fn run(name_or_id: String, json: bool) -> Result<(), VelosError> {
     if json {
         println!("{}", serde_json::json!({ "deleted": id }));
     } else {
-        println!("[velos] Deleted process '{}' (id={})", name_or_id, id);
+        println!("[velos] Deleted process '{name_or_id}' (id={id})");
     }
 
     Ok(())
