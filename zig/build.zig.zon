@@ -1,0 +1,10 @@
+.{
+    .name = .velos_core,
+    .fingerprint = 0x89afad9cb043ef0c,
+    .version = "0.1.0-dev",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

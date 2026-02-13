@@ -1,6 +1,6 @@
 # Phase 1: Skeleton + Build System
 
-> **Статус:** Not started
+> **Статус:** Done
 > **Цель:** Работающий Zig+Rust гибрид. Zig-библиотека вызывается из Rust. Single binary.
 > **Результат:** `velos ping` → "pong" (Rust CLI вызывает Zig через FFI)
 
@@ -8,42 +8,42 @@
 
 ## 1.1 Инициализация репозитория
 
-- [ ] Инициализировать Git-репозиторий
-- [ ] Создать .gitignore (zig-out, target, *.a, *.o, .velos/)
-- [ ] Добавить LICENSE (MIT OR Apache-2.0)
+- [x] Инициализировать Git-репозиторий
+- [x] Создать .gitignore (zig-out, target, *.a, *.o, .velos/)
+- [x] Добавить LICENSE (MIT OR Apache-2.0)
 
 ## 1.2 Zig-ядро
 
-- [ ] Создать `zig/build.zig` — build script для static library
-- [ ] Создать `zig/build.zig.zon` — package manifest
-- [ ] Создать `zig/src/lib.zig` — экспорт C ABI функций
-  - [ ] `velos_ping()` → возвращает version string
-  - [ ] `velos_daemon_init()` → заглушка, возвращает 0
-- [ ] Создать `include/velos_core.h` — C header для экспортов
-- [ ] Верифицировать: `cd zig && zig build` → `zig-out/lib/libvelos_core.a`
+- [x] Создать `zig/build.zig` — build script для static library
+- [x] Создать `zig/build.zig.zon` — package manifest
+- [x] Создать `zig/src/lib.zig` — экспорт C ABI функций
+  - [x] `velos_ping()` → возвращает version string
+  - [x] `velos_daemon_init()` → заглушка, возвращает 0
+- [x] Создать `include/velos_core.h` — C header для экспортов
+- [x] Верифицировать: `cd zig && zig build` → `zig-out/lib/libvelos_core.a`
 
 ## 1.3 Rust workspace
 
-- [ ] Создать корневой `Cargo.toml` (workspace)
-- [ ] Создать `crates/velos-ffi/Cargo.toml`
-- [ ] Создать `crates/velos-ffi/build.rs` — линковка libvelos_core.a
-- [ ] Создать `crates/velos-ffi/src/lib.rs` — extern "C" declarations + safe wrappers
-- [ ] Создать `crates/velos-core/Cargo.toml`
-- [ ] Создать `crates/velos-core/src/lib.rs` — базовые типы (ProcessConfig, ProcessStatus, Error)
-- [ ] Создать `crates/velos-cli/Cargo.toml`
-- [ ] Создать `crates/velos-cli/src/main.rs` — clap setup, команда `velos ping`
+- [x] Создать корневой `Cargo.toml` (workspace)
+- [x] Создать `crates/velos-ffi/Cargo.toml`
+- [x] Создать `crates/velos-ffi/build.rs` — линковка libvelos_core.a
+- [x] Создать `crates/velos-ffi/src/lib.rs` — extern "C" declarations + safe wrappers
+- [x] Создать `crates/velos-core/Cargo.toml`
+- [x] Создать `crates/velos-core/src/lib.rs` — базовые типы (ProcessConfig, ProcessStatus, Error)
+- [x] Создать `crates/velos-cli/Cargo.toml`
+- [x] Создать `crates/velos-cli/src/main.rs` — clap setup, команда `velos ping`
 
 ## 1.4 Build system
 
-- [ ] Создать Makefile с таргетами: build, build-debug, test, clean
-- [ ] Верифицировать полный pipeline: `make build` → `target/release/velos`
+- [x] Создать Makefile с таргетами: build, build-debug, test, clean
+- [x] Верифицировать полный pipeline: `make build` → `target/release/velos`
 
 ## 1.5 Верификация
 
-- [ ] `./target/release/velos ping` → выводит version + "pong from Zig core"
-- [ ] `./target/release/velos --version` → "Velos 0.1.0-dev"
-- [ ] `./target/release/velos --help` → список доступных команд
-- [ ] Размер бинарника < 5MB (release, stripped)
+- [x] `./target/release/velos ping` → выводит version + "pong from Zig core"
+- [x] `./target/release/velos --version` → "Velos 0.1.0-dev"
+- [x] `./target/release/velos --help` → список доступных команд
+- [x] Размер бинарника < 5MB (release, stripped)
 
 ---
 

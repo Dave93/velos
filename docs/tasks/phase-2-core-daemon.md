@@ -1,6 +1,6 @@
 # Phase 2: Core Daemon + Basic CLI
 
-> **Статус:** Not started
+> **Статус:** Done
 > **Зависимости:** Phase 1
 > **Цель:** Daemon запускает/останавливает процессы. CLI общается с daemon через IPC.
 > **Результат:** `velos start app.js` → процесс работает, `velos list` показывает его.
@@ -9,68 +9,68 @@
 
 ## 2.1 Daemon — Event Loop (Zig)
 
-- [ ] Реализовать Platform Abstraction Layer (PAL) интерфейс
+- [x] Реализовать Platform Abstraction Layer (PAL) интерфейс
 - [ ] Linux: epoll event loop
-- [ ] macOS: kqueue event loop
-- [ ] Main daemon loop: принимать IPC соединения + обрабатывать сигналы
-- [ ] Daemonization: fork + setsid (или запуск в foreground с --no-daemon)
+- [x] macOS: kqueue event loop
+- [x] Main daemon loop: принимать IPC соединения + обрабатывать сигналы
+- [x] Daemonization: fork + setsid (или запуск в foreground с --no-daemon)
 
 ## 2.2 Daemon — IPC Server (Zig)
 
-- [ ] Unix domain socket listener (bind, listen, accept)
-- [ ] Бинарный протокол: header (magic + version + length) + MessagePack payload
-- [ ] Мультиплексирование клиентов через event loop
-- [ ] Обработка команд: dispatch по command code
-- [ ] Отправка ответов (Response с id, status, payload)
+- [x] Unix domain socket listener (bind, listen, accept)
+- [x] Бинарный протокол: header (magic + version + length) + MessagePack payload
+- [x] Мультиплексирование клиентов через event loop
+- [x] Обработка команд: dispatch по command code
+- [x] Отправка ответов (Response с id, status, payload)
 
 ## 2.3 Daemon — Process Supervisor (Zig)
 
-- [ ] `fork()` + `exec()` для запуска дочерних процессов
-- [ ] Создание pipe для stdout/stderr перехвата
-- [ ] SIGCHLD handler → `waitpid()` → обнаружение завершения child
-- [ ] Хранение PID map: process_id → pid, status, config
-- [ ] Отправка сигналов дочерним процессам (SIGTERM, SIGKILL)
-- [ ] Graceful stop: SIGTERM → wait(kill_timeout) → SIGKILL
+- [x] `fork()` + `exec()` для запуска дочерних процессов
+- [x] Создание pipe для stdout/stderr перехвата
+- [x] SIGCHLD handler → `waitpid()` → обнаружение завершения child
+- [x] Хранение PID map: process_id → pid, status, config
+- [x] Отправка сигналов дочерним процессам (SIGTERM, SIGKILL)
+- [x] Graceful stop: SIGTERM → wait(kill_timeout) → SIGKILL
 
 ## 2.4 Daemon — Log Collector (Zig)
 
-- [ ] Чтение из pipe (stdout/stderr) дочерних процессов
-- [ ] Запись в лог-файлы (`~/.velos/logs/<name>-out.log`, `<name>-err.log`)
-- [ ] Ring buffer в памяти для последних 1000 строк (быстрый доступ)
+- [x] Чтение из pipe (stdout/stderr) дочерних процессов
+- [x] Запись в лог-файлы (`~/.velos/logs/<name>-out.log`, `<name>-err.log`)
+- [x] Ring buffer в памяти для последних 1000 строк (быстрый доступ)
 
 ## 2.5 Daemon — State & Lifecycle (Zig)
 
-- [ ] PID file: запись `~/.velos/velos.pid` при старте, удаление при shutdown
-- [ ] Signal handler: SIGTERM → graceful shutdown (остановить всех children)
-- [ ] Создание директории `~/.velos/` и поддиректорий при первом запуске
+- [x] PID file: запись `~/.velos/velos.pid` при старте, удаление при shutdown
+- [x] Signal handler: SIGTERM → graceful shutdown (остановить всех children)
+- [x] Создание директории `~/.velos/` и поддиректорий при первом запуске
 
 ## 2.6 Rust — IPC Client
 
-- [ ] `velos-client`: подключение к Unix socket
-- [ ] Отправка Request, получение Response
-- [ ] Таймауты и обработка ошибок (daemon не запущен, connection refused)
-- [ ] `velos-core/protocol.rs`: Rust типы для IPC сообщений (serde + rmp-serde)
+- [x] `velos-client`: подключение к Unix socket
+- [x] Отправка Request, получение Response
+- [x] Таймауты и обработка ошибок (daemon не запущен, connection refused)
+- [x] `velos-core/protocol.rs`: Rust типы для IPC сообщений (serde + rmp-serde)
 
 ## 2.7 CLI — Команды
 
-- [ ] `velos start <script> [--name <name>]` → PROCESS_START
-- [ ] `velos stop <name|id>` → PROCESS_STOP
-- [ ] `velos list` → PROCESS_LIST → table output (name, PID, status, uptime)
-- [ ] `velos logs <name> [--lines N]` → LOG_READ
-- [ ] `velos delete <name|id>` → PROCESS_DELETE
+- [x] `velos start <script> [--name <name>]` → PROCESS_START
+- [x] `velos stop <name|id>` → PROCESS_STOP
+- [x] `velos list` → PROCESS_LIST → table output (name, PID, status, uptime)
+- [x] `velos logs <name> [--lines N]` → LOG_READ
+- [x] `velos delete <name|id>` → PROCESS_DELETE
 
 ## 2.8 Daemon Auto-Start
 
-- [ ] При `velos start ...` CLI проверяет: daemon запущен? (проверка PID file + socket)
-- [ ] Если нет → запускает daemon в фоне (fork + exec velos-daemon binary)
-- [ ] Ожидание готовности daemon'а (retry connect с backoff, max 5s)
+- [x] При `velos start ...` CLI проверяет: daemon запущен? (проверка PID file + socket)
+- [x] Если нет → запускает daemon в фоне (fork + exec velos-daemon binary)
+- [x] Ожидание готовности daemon'а (retry connect с backoff, max 5s)
 
 ## 2.9 Тестирование
 
-- [ ] Unit-тесты Zig: IPC protocol serialize/deserialize
-- [ ] Unit-тесты Rust: velos-client connection
-- [ ] Integration test: start → list → logs → stop → delete lifecycle
-- [ ] Test: daemon auto-start и auto-detect
+- [x] Unit-тесты Zig: IPC protocol serialize/deserialize
+- [x] Unit-тесты Rust: velos-client connection
+- [x] Integration test: start → list → logs → stop → delete lifecycle
+- [x] Test: daemon auto-start и auto-detect
 
 ---
 

@@ -109,6 +109,22 @@ Pipeline: `zig build` → `libvelos_core.a` → `cargo build` → `target/releas
 └── logs/               # Process logs ({name}-out.log, {name}-err.log)
 ```
 
+## Workflow — Teammates
+
+All implementation work MUST use teammates (parallel agents) whenever possible. When starting a phase or a group of tasks:
+
+1. **Create a team** (TeamCreate) for the current phase/work scope
+2. **Break work into parallel tasks** — identify independent tasks that can be done simultaneously (e.g., Zig and Rust parts of the same phase, independent modules, tests)
+3. **Spawn teammates** for each independent work stream (use `general-purpose` subagent_type for implementation tasks)
+4. **Coordinate via task list** — use TaskCreate/TaskUpdate for tracking, SendMessage for communication
+5. **Only work sequentially** when there is a hard dependency (e.g., Zig static lib must exist before Rust FFI can link against it)
+
+Examples of parallelizable work:
+- Zig event loop (2.1) + Rust IPC types in velos-core (2.6) — no dependency until linking
+- Multiple independent CLI commands
+- Unit tests for different modules
+- Documentation + implementation
+
 ## Common patterns
 
 When implementing a new CLI command:

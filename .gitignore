@@ -1,0 +1,8 @@
+zig-out/
+.zig-cache/
+target/
+*.a
+*.o
+.velos/
+*.dylib
+*.so

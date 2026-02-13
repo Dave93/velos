@@ -1,0 +1,18 @@
+[package]
+name = "velos-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "velos"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+comfy-table = "7"
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+velos-client = { path = "../velos-client" }
+velos-core = { path = "../velos-core" }
+velos-ffi = { path = "../velos-ffi" }
