@@ -10,9 +10,19 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
 comfy-table = "7"
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 velos-client = { path = "../velos-client" }
+velos-config = { path = "../velos-config" }
 velos-core = { path = "../velos-core" }
 velos-ffi = { path = "../velos-ffi" }
+velos-log-engine = { path = "../velos-log-engine" }
+velos-metrics = { path = "../velos-metrics" }
+velos-api = { path = "../velos-api" }
+velos-mcp = { path = "../velos-mcp" }
+regex = "1"
+ratatui = "0.29"
+crossterm = "0.28"
+dirs = "5"

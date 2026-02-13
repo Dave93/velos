@@ -13,9 +13,14 @@ pub const MAX_PAYLOAD_SIZE: u32 = 4 * 1024 * 1024; // 4 MB max
 pub const Command = enum(u8) {
     process_start = 0x01,
     process_stop = 0x02,
+    process_restart = 0x03,
     process_delete = 0x04,
     process_list = 0x05,
+    process_info = 0x06,
+    process_scale = 0x07,
     log_read = 0x10,
+    state_save = 0x30,
+    state_load = 0x31,
     ping = 0x40,
     shutdown = 0x41,
     _,
@@ -151,6 +156,17 @@ pub fn writeU8(buf: []u8, offset: usize, val: u8) usize {
 pub fn readU8(buf: []const u8, offset: usize) struct { val: u8, next: usize } {
     if (offset >= buf.len) return .{ .val = 0, .next = offset };
     return .{ .val = buf[offset], .next = offset + 1 };
+}
+
+pub fn writeI32(buf: []u8, offset: usize, val: i32) usize {
+    std.mem.writeInt(i32, buf[offset..][0..4], val, .little);
+    return offset + 4;
+}
+
+pub fn readI32(buf: []const u8, offset: usize) struct { val: i32, next: usize } {
+    if (offset + 4 > buf.len) return .{ .val = 0, .next = offset };
+    const val = std.mem.readInt(i32, buf[offset..][0..4], .little);
+    return .{ .val = val, .next = offset + 4 };
 }
 
 /// Build a full wire message: header + encoded request/response

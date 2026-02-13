@@ -1,12 +1,34 @@
 use comfy_table::{Cell, Table};
 use velos_core::VelosError;
 
-pub async fn run(json: bool) -> Result<(), VelosError> {
+pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
     let mut client = super::connect().await?;
     let procs = client.list().await?;
 
+    if ai {
+        let compact: Vec<_> = procs
+            .iter()
+            .map(|p| {
+                serde_json::json!({
+                    "n": p.name,
+                    "i": p.id,
+                    "s": p.status_str(),
+                    "m": p.memory_bytes,
+                    "u": p.uptime_ms,
+                    "r": p.restart_count,
+                    "p": p.pid,
+                })
+            })
+            .collect();
+        println!("{}", serde_json::to_string(&compact).unwrap_or_default());
+        return Ok(());
+    }
+
     if json {
-        println!("{}", serde_json::to_string_pretty(&procs).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&procs).unwrap_or_default()
+        );
         return Ok(());
     }
 
@@ -16,7 +38,9 @@ pub async fn run(json: bool) -> Result<(), VelosError> {
     }
 
     let mut table = Table::new();
-    table.set_header(vec!["ID", "Name", "PID", "Status", "Memory", "Uptime", "Restarts"]);
+    table.set_header(vec![
+        "ID", "Name", "PID", "Status", "Memory", "Uptime", "Restarts",
+    ]);
 
     for p in &procs {
         table.add_row(vec![

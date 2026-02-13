@@ -4,8 +4,11 @@ pub mod connection;
 pub use commands::VelosClient;
 pub use connection::VelosConnection;
 
-/// Default socket path: ~/.velos/velos.sock
+/// Socket path: $VELOS_SOCKET or ~/.velos/velos.sock
 pub fn default_socket_path() -> std::path::PathBuf {
+    if let Ok(path) = std::env::var("VELOS_SOCKET") {
+        return std::path::PathBuf::from(path);
+    }
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
     std::path::PathBuf::from(home)
         .join(".velos")

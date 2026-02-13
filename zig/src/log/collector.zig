@@ -15,6 +15,8 @@ pub const LogCollector = struct {
         stdout_fd: ?posix.fd_t,
         stderr_fd: ?posix.fd_t,
         ring: RingBuffer,
+        log_max_size: u64 = 10 * 1024 * 1024,
+        log_retain_count: u32 = 30,
     };
 
     processes: std.AutoHashMap(u32, *ProcessLog), // process_id -> log state
@@ -46,6 +48,7 @@ pub const LogCollector = struct {
         }
         self.processes.deinit();
         self.fd_to_process.deinit();
+        self.writer.deinit();
     }
 
     /// Register a new process for log collection
@@ -133,8 +136,14 @@ pub const LogCollector = struct {
         // Write to ring buffer
         try proc_log.ring.push(timestamp_ms, level, stream, line);
 
-        // Write to file
-        self.writer.writeLine(proc_log.name, stream, line) catch {};
+        // Write to file with rotation
+        self.writer.writeLineWithRotation(
+            proc_log.name,
+            stream,
+            line,
+            proc_log.log_max_size,
+            proc_log.log_retain_count,
+        ) catch {};
     }
 
     /// Read last N log lines for a process
@@ -161,6 +170,13 @@ pub const LogCollector = struct {
 
         _ = self.fd_to_process.remove(fd);
         posix.close(fd);
+    }
+
+    /// Set log rotation config for a process
+    pub fn setLogConfig(self: *Self, process_id: u32, max_size: u64, retain_count: u32) void {
+        const proc_log = self.processes.get(process_id) orelse return;
+        proc_log.log_max_size = max_size;
+        proc_log.log_retain_count = retain_count;
     }
 
     /// Get the fd -> process mapping (for event loop registration)

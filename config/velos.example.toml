@@ -1,0 +1,79 @@
+# Velos Configuration Example
+# Place as velos.toml in your project root or ~/.velos/config.toml
+
+# ============================================================================
+# Application: API Server
+# ============================================================================
+[apps.api]
+script = "server.js"
+cwd = "/app"
+interpreter = "node"
+# args = ["--port", "3000"]
+instances = 1
+autorestart = true
+max_restarts = 15
+min_uptime = 1000              # ms — process must run at least this long to be "stable"
+restart_delay = 0              # ms — delay between restarts
+exp_backoff_restart_delay = false
+kill_timeout = 5000            # ms — SIGTERM → wait → SIGKILL
+max_memory_restart = "150M"    # restart if memory exceeds this (K, M, G suffixes)
+
+# File watching
+watch = false
+watch_paths = ["src/", "config/"]
+watch_ignore = ["node_modules", ".git", "*.log"]
+watch_delay = 1000             # ms — debounce
+
+# Logging
+log_max_size = "10M"
+log_retain_count = 30
+# log_file = "/var/log/velos/api.log"  # custom log path
+merge_logs = false
+
+# Scheduled restart (cron format: min hour day month weekday)
+# cron_restart = "0 3 * * *"   # restart every day at 3am
+
+# Base environment variables
+[apps.api.env]
+NODE_ENV = "production"
+PORT = "3000"
+
+# Environment profile: production
+# Use with: velos start --config velos.toml --env production
+[apps.api.env_production]
+NODE_ENV = "production"
+DATABASE_URL = "postgres://prod-host:5432/mydb"
+REDIS_URL = "redis://prod-redis:6379"
+
+# Environment profile: development
+# Use with: velos start --config velos.toml --env development
+[apps.api.env_development]
+NODE_ENV = "development"
+DATABASE_URL = "postgres://localhost:5432/mydb_dev"
+REDIS_URL = "redis://localhost:6379"
+
+# ============================================================================
+# Application: Background Worker
+# ============================================================================
+[apps.worker]
+script = "worker.py"
+cwd = "/app"
+interpreter = "python3"
+instances = 2
+autorestart = true
+max_restarts = 10
+max_memory_restart = "256M"
+
+[apps.worker.env]
+QUEUE_NAME = "default"
+LOG_LEVEL = "info"
+
+# ============================================================================
+# Application: Static binary (no interpreter)
+# ============================================================================
+[apps.gateway]
+script = "/usr/local/bin/my-gateway"
+# interpreter not set = run binary directly
+autorestart = true
+max_restarts = -1              # -1 = unlimited restarts
+kill_timeout = 10000

@@ -4,9 +4,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
-use velos_core::protocol::{
-    self, CommandCode, Request, Response, HEADER_SIZE,
-};
+use velos_core::protocol::{self, CommandCode, Request, Response, HEADER_SIZE};
 use velos_core::VelosError;
 
 /// Low-level IPC connection to the Velos daemon.

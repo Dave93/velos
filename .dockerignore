@@ -1,0 +1,8 @@
+target/
+zig/zig-out/
+zig/.zig-cache/
+.git/
+*.md
+tests/
+.github/
+.vscode/

@@ -1,7 +1,8 @@
 const std = @import("std");
 const posix = std.posix;
+const builtin = @import("builtin");
 
-pub const SIGCHLD: u6 = 20; // macOS SIGCHLD
+pub const SIGCHLD: u6 = if (builtin.os.tag == .macos) 20 else 17;
 pub const SIGTERM: u6 = 15;
 pub const SIGKILL: u6 = 9;
 pub const SIGINT: u6 = 2;

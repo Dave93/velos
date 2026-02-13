@@ -13,6 +13,21 @@ pub struct ProcessConfig {
     /// Auto-restart on crash (default true)
     #[serde(default = "default_autorestart")]
     pub autorestart: bool,
+    /// Max restart attempts (-1 = unlimited, default 15)
+    #[serde(default = "default_max_restarts")]
+    pub max_restarts: i32,
+    /// Minimum uptime in ms before considering process "stable" (default 1000)
+    #[serde(default = "default_min_uptime_ms")]
+    pub min_uptime_ms: u64,
+    /// Delay between restarts in ms (default 0)
+    #[serde(default)]
+    pub restart_delay_ms: u32,
+    /// Use exponential backoff for restart delays (default false)
+    #[serde(default)]
+    pub exp_backoff_restart_delay: bool,
+    /// Restart process when memory exceeds this limit (bytes, None = unlimited)
+    #[serde(default)]
+    pub max_memory_restart: Option<u64>,
 }
 
 fn default_kill_timeout() -> u32 {
@@ -21,6 +36,14 @@ fn default_kill_timeout() -> u32 {
 
 fn default_autorestart() -> bool {
     true
+}
+
+fn default_max_restarts() -> i32 {
+    15
+}
+
+fn default_min_uptime_ms() -> u64 {
+    1000
 }
 
 impl Default for ProcessConfig {
@@ -32,6 +55,11 @@ impl Default for ProcessConfig {
             interpreter: None,
             kill_timeout_ms: default_kill_timeout(),
             autorestart: default_autorestart(),
+            max_restarts: default_max_restarts(),
+            min_uptime_ms: default_min_uptime_ms(),
+            restart_delay_ms: 0,
+            exp_backoff_restart_delay: false,
+            max_memory_restart: None,
         }
     }
 }

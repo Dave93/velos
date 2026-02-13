@@ -2,17 +2,26 @@ use velos_core::VelosError;
 
 pub async fn run(name_or_id: String, json: bool) -> Result<(), VelosError> {
     let mut client = super::connect().await?;
+    let ids = super::resolve_ids(&mut client, &name_or_id).await?;
 
-    let id: u32 = name_or_id
-        .parse()
-        .map_err(|_| VelosError::ProcessNotFound(name_or_id.clone()))?;
-
-    client.stop(id).await?;
+    for id in &ids {
+        client.stop(*id).await?;
+    }
 
     if json {
-        println!("{}", serde_json::json!({ "stopped": id }));
+        let stopped: Vec<_> = ids
+            .iter()
+            .map(|id| serde_json::json!({ "stopped": id }))
+            .collect();
+        println!("{}", serde_json::to_string(&stopped).unwrap_or_default());
+    } else if ids.len() > 1 {
+        println!(
+            "[velos] Stopped {} instances of '{}'",
+            ids.len(),
+            name_or_id
+        );
     } else {
-        println!("[velos] Stopped process '{}'", name_or_id);
+        println!("[velos] Stopped process '{}' (id={})", name_or_id, ids[0]);
     }
 
     Ok(())
