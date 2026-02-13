@@ -25,7 +25,7 @@
   - Автовыход при завершении всех процессов
 - [x] `.dockerignore`
 - [x] `docker-compose.yml` пример
-- [x] Publish: `ghcr.io/user/velos`
+- [x] Publish: `ghcr.io/Dave93/velos`
 
 ## 7.3 Cross-Compilation
 

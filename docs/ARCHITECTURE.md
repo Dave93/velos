@@ -441,7 +441,7 @@ members = [
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/user/velos"
+repository = "https://github.com/Dave93/velos"
 
 [workspace.dependencies]
 # Shared dependencies
@@ -1247,5 +1247,5 @@ jobs:
 | Homebrew | `brew install velos` |
 | npm (wrapper) | `npm install -g velos` (опционально, для обратной совместимости) |
 | Binary | Скачать с GitHub Releases |
-| Docker | `docker pull ghcr.io/user/velos` |
+| Docker | `docker pull ghcr.io/Dave93/velos` |
 | AUR (Arch) | `yay -S velos` |

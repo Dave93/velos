@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/user/velos/actions"><img src="https://img.shields.io/github/actions/workflow/status/user/velos/ci.yml?branch=main&label=CI" alt="CI"></a>
-  <a href="https://github.com/user/velos/releases"><img src="https://img.shields.io/github/v/release/user/velos?label=version" alt="Version"></a>
+  <a href="https://github.com/Dave93/velos/actions"><img src="https://img.shields.io/github/actions/workflow/status/Dave93/velos/ci.yml?branch=main&label=CI" alt="CI"></a>
+  <a href="https://github.com/Dave93/velos/releases"><img src="https://img.shields.io/github/v/release/Dave93/velos?label=version" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue" alt="License"></a>
   <a href="https://crates.io/crates/velos"><img src="https://img.shields.io/crates/v/velos" alt="crates.io"></a>
 </p>
@@ -34,14 +34,19 @@
 ### Install
 
 ```bash
+# One-line installer (macOS / Linux)
+curl -fsSL https://raw.githubusercontent.com/Dave93/velos/main/distribution/install.sh | bash
+
+# Specific version
+curl -fsSL https://raw.githubusercontent.com/Dave93/velos/main/distribution/install.sh | bash -s v0.1.0
+
+# Homebrew (macOS)
+brew install Dave93/tap/velos
+
 # From source (requires Zig 0.15+ and Rust 1.75+)
-git clone https://github.com/user/velos.git
+git clone https://github.com/Dave93/velos.git
 cd velos
 make build
-sudo cp target/release/velos /usr/local/bin/
-
-# Or with cargo
-cargo install velos
 ```
 
 ### Usage
