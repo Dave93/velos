@@ -1,0 +1,18 @@
+name: velos
+arch: "${ARCH}"
+platform: linux
+version: "${VERSION}"
+maintainer: "Dave93"
+description: "High-performance AI-friendly process manager with native MCP server"
+vendor: "Velos"
+homepage: "https://github.com/Dave93/velos"
+license: "MIT"
+
+contents:
+  - src: ./velos
+    dst: /usr/bin/velos
+    file_info:
+      mode: 0755
+
+  - src: ./velos.1
+    dst: /usr/share/man/man1/velos.1

@@ -112,11 +112,86 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref, '-') }}
 
+  package-linux:
+    name: Build .deb and .rpm packages
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Install nfpm
+        run: |
+          curl -sfL https://install.goreleaser.com/github.com/goreleaser/nfpm.sh | sh -s -- -b /usr/local/bin
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build packages
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p packages
+
+          # Build for each Linux architecture
+          for arch_pair in "velos-linux-x86_64:amd64:x86_64" "velos-linux-arm64:arm64:aarch64"; do
+            IFS=':' read -r artifact deb_arch rpm_arch <<< "$arch_pair"
+
+            # Extract binary from tar.gz
+            mkdir -p "staging"
+            tar xzf "artifacts/${artifact}.tar.gz" -C staging
+            cp "staging/${artifact}/velos" staging/velos
+            cp docs/velos.1 staging/velos.1
+            rm -rf "staging/${artifact}"
+
+            # Build .deb
+            cd staging
+            VERSION="$VERSION" ARCH="$deb_arch" nfpm package \
+              --config ../distribution/nfpm.yml \
+              --packager deb \
+              --target "../packages/"
+
+            # Build .rpm
+            VERSION="$VERSION" ARCH="$rpm_arch" nfpm package \
+              --config ../distribution/nfpm.yml \
+              --packager rpm \
+              --target "../packages/"
+
+            cd ..
+            rm -rf staging
+          done
+
+          echo "==> Built packages:"
+          ls -la packages/
+
+      - name: Upload .deb packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-packages
+          path: packages/*.deb
+
+      - name: Upload .rpm packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-packages
+          path: packages/*.rpm
+
+      - name: Attach packages to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/*.deb
+            packages/*.rpm
+
   upload-r2:
     name: Upload to Cloudflare R2
     needs: release
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref, '-') }}
+    if: ${{ !contains(github.ref, '-') && secrets.R2_ACCOUNT_ID != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -147,14 +222,12 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.tag }}"
 
-          # Upload versioned artifacts
           for file in artifacts/*.tar.gz; do
             aws s3 cp "$file" "s3://${R2_BUCKET}/${VERSION}/$(basename "$file")" \
               --endpoint-url "$R2_ENDPOINT" \
               --content-type "application/gzip"
           done
 
-          # Upload checksums
           aws s3 cp artifacts/checksums.txt "s3://${R2_BUCKET}/${VERSION}/checksums.txt" \
             --endpoint-url "$R2_ENDPOINT" \
             --content-type "text/plain"
@@ -164,7 +237,6 @@ jobs:
           R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
           R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
         run: |
-          # Copy to latest/
           for file in artifacts/*.tar.gz; do
             aws s3 cp "$file" "s3://${R2_BUCKET}/latest/$(basename "$file")" \
               --endpoint-url "$R2_ENDPOINT" \
@@ -175,7 +247,7 @@ jobs:
             --endpoint-url "$R2_ENDPOINT" \
             --content-type "text/plain"
 
-      - name: Upload install script to R2
+      - name: Upload install and setup scripts to R2
         env:
           R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
           R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
@@ -183,3 +255,210 @@ jobs:
           aws s3 cp distribution/install.sh "s3://${R2_BUCKET}/install.sh" \
             --endpoint-url "$R2_ENDPOINT" \
             --content-type "text/plain"
+          aws s3 cp distribution/scripts/setup-apt.sh "s3://${R2_BUCKET}/setup-apt.sh" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "text/plain"
+          aws s3 cp distribution/scripts/setup-yum.sh "s3://${R2_BUCKET}/setup-yum.sh" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "text/plain"
+
+  publish-apt:
+    name: Publish APT repository
+    needs: [package-linux, release]
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-') && secrets.R2_ACCOUNT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb-packages
+          path: debs
+
+      - name: Import GPG key
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --passphrase-fd 0 --pinentry-mode loopback --yes --sign /dev/null 2>/dev/null || true
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+
+      - name: Generate APT repository
+        run: |
+          GPG_KEY_ID=""
+          if gpg --list-secret-keys 2>/dev/null | grep -q sec; then
+            GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format long 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+          fi
+          bash distribution/scripts/generate-apt-repo.sh debs apt-repo "$GPG_KEY_ID"
+
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id "${{ secrets.R2_ACCESS_KEY_ID }}"
+          aws configure set aws_secret_access_key "${{ secrets.R2_SECRET_ACCESS_KEY }}"
+          aws configure set default.region auto
+
+      - name: Upload APT repo to R2
+        env:
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          aws s3 sync apt-repo/ "s3://${R2_BUCKET}/apt/" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --delete
+
+          # Upload GPG public key
+          if gpg --list-secret-keys 2>/dev/null | grep -q sec; then
+            GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format long 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+            gpg --armor --export "$GPG_KEY_ID" > gpg.key
+            aws s3 cp gpg.key "s3://${R2_BUCKET}/gpg.key" \
+              --endpoint-url "$R2_ENDPOINT" \
+              --content-type "application/pgp-keys"
+          fi
+
+  publish-yum:
+    name: Publish YUM repository
+    needs: [package-linux, release]
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-') && secrets.R2_ACCOUNT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rpm-packages
+          path: rpms
+
+      - name: Import GPG key
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --passphrase-fd 0 --pinentry-mode loopback --yes --sign /dev/null 2>/dev/null || true
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y createrepo-c rpm
+
+      - name: Generate YUM repository
+        run: |
+          GPG_KEY_ID=""
+          if gpg --list-secret-keys 2>/dev/null | grep -q sec; then
+            GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format long 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+          fi
+          bash distribution/scripts/generate-yum-repo.sh rpms yum-repo "$GPG_KEY_ID"
+
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id "${{ secrets.R2_ACCESS_KEY_ID }}"
+          aws configure set aws_secret_access_key "${{ secrets.R2_SECRET_ACCESS_KEY }}"
+          aws configure set default.region auto
+
+      - name: Upload YUM repo to R2
+        env:
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          aws s3 sync yum-repo/ "s3://${R2_BUCKET}/rpm/" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --delete
+
+  publish-homebrew:
+    name: Update Homebrew tap
+    needs: release
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-') && secrets.HOMEBREW_TAP_TOKEN != '' }}
+    steps:
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download checksums from release
+        run: |
+          curl -fsSL "https://github.com/Dave93/velos/releases/download/v${{ steps.version.outputs.version }}/checksums.txt" \
+            -o checksums.txt
+          cat checksums.txt
+
+      - name: Generate Homebrew formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA_MACOS_ARM64=$(grep 'velos-macos-arm64.tar.gz' checksums.txt | awk '{print $1}')
+          SHA_MACOS_X86=$(grep 'velos-macos-x86_64.tar.gz' checksums.txt | awk '{print $1}')
+          SHA_LINUX_ARM64=$(grep 'velos-linux-arm64.tar.gz' checksums.txt | awk '{print $1}')
+          SHA_LINUX_X86=$(grep 'velos-linux-x86_64.tar.gz' checksums.txt | awk '{print $1}')
+
+          cat > velos.rb <<FORMULA
+          class Velos < Formula
+            desc "High-performance AI-friendly process manager"
+            homepage "https://github.com/Dave93/velos"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/Dave93/velos/releases/download/v#{version}/velos-macos-arm64.tar.gz"
+                sha256 "${SHA_MACOS_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/Dave93/velos/releases/download/v#{version}/velos-macos-x86_64.tar.gz"
+                sha256 "${SHA_MACOS_X86}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/Dave93/velos/releases/download/v#{version}/velos-linux-arm64.tar.gz"
+                sha256 "${SHA_LINUX_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/Dave93/velos/releases/download/v#{version}/velos-linux-x86_64.tar.gz"
+                sha256 "${SHA_LINUX_X86}"
+              end
+            end
+
+            def install
+              if OS.mac?
+                arch = Hardware::CPU.arm? ? "arm64" : "x86_64"
+                bin.install "velos-macos-#{arch}/velos"
+              else
+                arch = Hardware::CPU.arm? ? "arm64" : "x86_64"
+                bin.install "velos-linux-#{arch}/velos"
+              end
+            end
+
+            test do
+              assert_match "velos", shell_output("#{bin}/velos --version")
+            end
+          end
+          FORMULA
+
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' velos.rb
+          cat velos.rb
+
+      - name: Push formula to homebrew-tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          CONTENT=$(base64 -w 0 velos.rb)
+
+          # Check if file exists (get SHA for update)
+          EXISTING_SHA=$(curl -s -H "Authorization: token ${GH_TOKEN}" \
+            "https://api.github.com/repos/Dave93/homebrew-tap/contents/Formula/velos.rb" \
+            | jq -r '.sha // empty')
+
+          if [ -n "$EXISTING_SHA" ]; then
+            # Update existing file
+            curl -s -X PUT \
+              -H "Authorization: token ${GH_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/Dave93/homebrew-tap/contents/Formula/velos.rb" \
+              -d "{\"message\":\"Update velos to ${{ steps.version.outputs.version }}\",\"content\":\"${CONTENT}\",\"sha\":\"${EXISTING_SHA}\"}"
+          else
+            # Create new file
+            curl -s -X PUT \
+              -H "Authorization: token ${GH_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/Dave93/homebrew-tap/contents/Formula/velos.rb" \
+              -d "{\"message\":\"Add velos ${{ steps.version.outputs.version }}\",\"content\":\"${CONTENT}\"}"
+          fi
+
+          echo "==> Homebrew formula pushed to Dave93/homebrew-tap"
