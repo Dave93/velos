@@ -191,7 +191,8 @@ jobs:
     name: Upload to Cloudflare R2
     needs: release
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref, '-') && secrets.R2_ACCOUNT_ID != '' }}
+    if: ${{ !contains(github.ref, '-') }}
+    environment: release
     steps:
       - uses: actions/checkout@v4
 
@@ -266,7 +267,7 @@ jobs:
     name: Publish APT repository
     needs: [package-linux, release]
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref, '-') && secrets.R2_ACCOUNT_ID != '' }}
+    if: ${{ !contains(github.ref, '-') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -276,7 +277,6 @@ jobs:
           path: debs
 
       - name: Import GPG key
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
           echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --passphrase-fd 0 --pinentry-mode loopback --yes --sign /dev/null 2>/dev/null || true
@@ -320,7 +320,7 @@ jobs:
     name: Publish YUM repository
     needs: [package-linux, release]
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref, '-') && secrets.R2_ACCOUNT_ID != '' }}
+    if: ${{ !contains(github.ref, '-') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -330,7 +330,6 @@ jobs:
           path: rpms
 
       - name: Import GPG key
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
           echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --passphrase-fd 0 --pinentry-mode loopback --yes --sign /dev/null 2>/dev/null || true
@@ -365,7 +364,7 @@ jobs:
     name: Update Homebrew tap
     needs: release
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref, '-') && secrets.HOMEBREW_TAP_TOKEN != '' }}
+    if: ${{ !contains(github.ref, '-') }}
     steps:
       - name: Extract version
         id: version
