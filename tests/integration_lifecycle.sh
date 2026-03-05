@@ -137,9 +137,10 @@ if __name__ == '__main__':
                 mem = struct.unpack_from('<Q', data, off)[0]; off += 8
                 uptime = struct.unpack_from('<Q', data, off)[0]; off += 8
                 restarts = struct.unpack_from('<I', data, off)[0]; off += 4
+                cpu = struct.unpack_from('<H', data, off)[0]; off += 2
                 procs.append({'id': pid_id, 'name': name, 'pid': pid,
                               'status': status, 'memory': mem, 'uptime': uptime,
-                              'restarts': restarts})
+                              'restarts': restarts, 'cpu': cpu / 10.0})
             print(json.dumps({'ok': True, 'count': count, 'processes': procs}))
         else:
             print(json.dumps({'ok': False}))
