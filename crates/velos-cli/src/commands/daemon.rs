@@ -9,6 +9,11 @@ pub fn run(socket_path: Option<String>, state_dir: Option<String>) -> Result<(),
         )))
     })?;
 
+    // Pass our binary path to Zig so it can fork+exec for crash notifications
+    if let Ok(exe) = std::env::current_exe() {
+        velos_ffi::set_notify_binary(&exe.to_string_lossy());
+    }
+
     eprintln!("[velos-daemon] Initialized. Entering event loop.");
 
     velos_ffi::daemon_run().map_err(|code| {

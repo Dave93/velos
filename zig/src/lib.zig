@@ -82,6 +82,7 @@ var g_persistence: ?Persistence = null;
 var g_socket_path: ?[]u8 = null;
 var g_running: bool = false;
 var g_initialized: bool = false;
+var g_notify_binary: ?[]u8 = null;
 
 // ============================================================
 // C ABI exports
@@ -90,6 +91,20 @@ var g_initialized: bool = false;
 /// Returns a version/ping string. Exported via C ABI for FFI.
 export fn velos_ping() [*:0]const u8 {
     return "Velos 0.1.0-dev - pong from Zig core";
+}
+
+/// Set the path to the velos binary for crash notification fork+exec.
+export fn velos_set_notify_binary(path_c: ?[*:0]const u8) void {
+    if (g_notify_binary) |old| g_allocator.free(old);
+    g_notify_binary = if (path_c) |p|
+        g_allocator.dupe(u8, std.mem.span(p)) catch null
+    else
+        null;
+
+    // Pass to supervisor
+    if (g_supervisor) |*sup| {
+        sup.notify_binary = g_notify_binary;
+    }
 }
 
 /// Initialize the daemon. Sets up directories, event loop, IPC server, supervisor.

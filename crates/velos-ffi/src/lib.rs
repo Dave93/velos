@@ -5,6 +5,7 @@ extern "C" {
     fn velos_daemon_init(socket_path: *const c_char, state_dir: *const c_char) -> c_int;
     fn velos_daemon_run() -> c_int;
     fn velos_daemon_shutdown() -> c_int;
+    fn velos_set_notify_binary(path: *const c_char);
 }
 
 pub fn ping() -> String {
@@ -36,6 +37,11 @@ pub fn daemon_run() -> Result<(), i32> {
     } else {
         Err(ret)
     }
+}
+
+pub fn set_notify_binary(path: &str) {
+    let c = CString::new(path).unwrap();
+    unsafe { velos_set_notify_binary(c.as_ptr()) };
 }
 
 pub fn daemon_shutdown() -> Result<(), i32> {

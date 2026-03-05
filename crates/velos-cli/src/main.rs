@@ -248,10 +248,40 @@ enum Commands {
     Ping,
     /// Ping the Zig core (FFI, for testing)
     PingFfi,
+    /// Configure global settings (notifications, etc.)
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for (bash, zsh, fish, elvish, powershell)
         shell: String,
+    },
+    /// Internal: send crash notification (called by daemon)
+    #[command(hide = true)]
+    NotifyCrash {
+        /// Process name
+        name: String,
+        /// Exit code
+        exit_code: i32,
+    },
+}
+
+#[derive(Subcommand)]
+enum ConfigAction {
+    /// Set a config value
+    #[command(allow_hyphen_values = true)]
+    Set {
+        /// Config key (e.g. telegram.bot_token)
+        key: String,
+        /// Config value
+        value: String,
+    },
+    /// Get a config value (or show all if no key given)
+    Get {
+        /// Config key (optional)
+        key: Option<String>,
     },
 }
 
@@ -360,6 +390,13 @@ async fn main() {
             let response = velos_ffi::ping();
             println!("{response}");
             Ok(())
+        }
+        Commands::Config { action } => match action {
+            ConfigAction::Set { key, value } => commands::config::run_set(key, value).await,
+            ConfigAction::Get { key } => commands::config::run_get(key).await,
+        },
+        Commands::NotifyCrash { name, exit_code } => {
+            commands::notify_crash::run(name, exit_code).await
         }
         Commands::Completions { shell } => commands::completions::run(shell),
     };

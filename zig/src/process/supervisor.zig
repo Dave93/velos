@@ -93,6 +93,9 @@ pub const Supervisor = struct {
     // Track last cron check minute to avoid re-triggering
     last_cron_minute: i32 = -1,
 
+    // Path to velos binary for crash notification fork+exec
+    notify_binary: ?[]const u8 = null,
+
     pub fn init(allocator: std.mem.Allocator, log_collector: *LogCollector) Self {
         return Self{
             .processes = std.AutoHashMap(u32, *ProcessInfo).init(allocator),
@@ -411,6 +414,8 @@ pub const Supervisor = struct {
 
             if (abnormal_exit) {
                 proc.status = .errored;
+                // Fire crash notification (fork+exec, non-blocking)
+                self.notifyCrash(proc.config.name, reap.exit_code);
             } else {
                 proc.status = .stopped;
             }
@@ -456,6 +461,47 @@ pub const Supervisor = struct {
                 };
             }
         }
+    }
+
+    /// Fork+exec the notify binary to send crash notification (non-blocking).
+    fn notifyCrash(self: *Self, name: []const u8, exit_code: u8) void {
+        const bin_path = self.notify_binary orelse return;
+
+        // Allocate null-terminated strings for execve
+        const bin_z = self.allocator.dupeZ(u8, bin_path) catch return;
+        defer self.allocator.free(bin_z);
+        const name_z = self.allocator.dupeZ(u8, name) catch return;
+        defer self.allocator.free(name_z);
+
+        // Format exit code as string
+        var code_buf: [16]u8 = undefined;
+        const code_str = std.fmt.bufPrint(&code_buf, "{d}", .{exit_code}) catch return;
+        const code_z = self.allocator.dupeZ(u8, code_str) catch return;
+        defer self.allocator.free(code_z);
+
+        const argv = [_:null]?[*:0]const u8{
+            bin_z.ptr,
+            @as([*:0]const u8, @ptrCast("notify-crash")),
+            name_z.ptr,
+            code_z.ptr,
+            null,
+        };
+
+        const pid = std.c.fork();
+        if (pid == 0) {
+            // Child: exec the notify binary, detached
+            // Close stdin, redirect stdout/stderr to /dev/null
+            const devnull = posix.open("/dev/null", .{ .ACCMODE = .WRONLY }, 0) catch {
+                posix.exit(1);
+            };
+            posix.dup2(devnull, posix.STDOUT_FILENO) catch {};
+            posix.dup2(devnull, posix.STDERR_FILENO) catch {};
+            posix.close(devnull);
+
+            _ = @errorName(posix.execvpeZ(argv[0].?, @ptrCast(&argv), std.c.environ));
+            posix.exit(1);
+        }
+        // Parent: don't wait — SIGCHLD handler will reap it (and ignore unknown PIDs)
     }
 
     /// Execute a restart for a process: create new pipes, fork/exec, update state.

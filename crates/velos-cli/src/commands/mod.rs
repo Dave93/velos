@@ -5,6 +5,7 @@
 
 pub mod api;
 pub mod completions;
+pub mod config;
 pub mod daemon;
 pub mod delete;
 pub mod flush;
@@ -13,6 +14,7 @@ pub mod list;
 pub mod logs;
 pub mod metrics;
 pub mod monit;
+pub mod notify_crash;
 pub mod ping;
 pub mod reload;
 pub mod restart;
