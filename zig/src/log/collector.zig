@@ -78,7 +78,7 @@ pub const LogCollector = struct {
         }
     }
 
-    /// Remove a process from log collection. Closes pipe fds.
+    /// Remove a process from log collection. Closes pipe fds and clears ring buffer.
     pub fn removeProcess(self: *Self, process_id: u32) void {
         const proc_log = self.processes.get(process_id) orelse return;
 
@@ -95,6 +95,68 @@ pub const LogCollector = struct {
         self.allocator.free(proc_log.name);
         self.allocator.destroy(proc_log);
         _ = self.processes.remove(process_id);
+    }
+
+    /// Replace pipe fds for a process (on restart) without clearing the ring buffer.
+    /// Drains remaining data from old pipes before closing them.
+    pub fn updatePipes(
+        self: *Self,
+        process_id: u32,
+        new_stdout_fd: ?posix.fd_t,
+        new_stderr_fd: ?posix.fd_t,
+    ) void {
+        const proc_log = self.processes.get(process_id) orelse return;
+
+        // Drain and close old stdout pipe
+        if (proc_log.stdout_fd) |old_fd| {
+            self.drainFd(old_fd);
+            _ = self.fd_to_process.remove(old_fd);
+            posix.close(old_fd);
+        }
+        // Drain and close old stderr pipe
+        if (proc_log.stderr_fd) |old_fd| {
+            self.drainFd(old_fd);
+            _ = self.fd_to_process.remove(old_fd);
+            posix.close(old_fd);
+        }
+
+        // Set new fds
+        proc_log.stdout_fd = new_stdout_fd;
+        proc_log.stderr_fd = new_stderr_fd;
+
+        // Register new fd mappings
+        if (new_stdout_fd) |fd| {
+            self.fd_to_process.put(fd, FdInfo{ .process_id = process_id, .stream = 0 }) catch {};
+        }
+        if (new_stderr_fd) |fd| {
+            self.fd_to_process.put(fd, FdInfo{ .process_id = process_id, .stream = 1 }) catch {};
+        }
+    }
+
+    /// Drain all available data from a pipe fd (non-blocking read until WOULDBLOCK/EOF)
+    fn drainFd(self: *Self, fd: posix.fd_t) void {
+        const info = self.fd_to_process.get(fd) orelse return;
+        const proc_log = self.processes.get(info.process_id) orelse return;
+
+        var buf: [4096]u8 = undefined;
+        while (true) {
+            const n = posix.read(fd, &buf) catch break;
+            if (n == 0) break; // EOF
+
+            const data = buf[0..n];
+            var start: usize = 0;
+            for (data, 0..) |byte, i| {
+                if (byte == '\n') {
+                    const line = data[start..i];
+                    self.processLine(proc_log, info.stream, line) catch {};
+                    start = i + 1;
+                }
+            }
+            if (start < data.len) {
+                const line = data[start..];
+                self.processLine(proc_log, info.stream, line) catch {};
+            }
+        }
     }
 
     /// Called when data is available on a pipe fd. Reads and processes it.

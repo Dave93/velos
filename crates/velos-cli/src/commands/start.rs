@@ -99,6 +99,26 @@ pub async fn run(args: StartArgs) -> Result<(), VelosError> {
         println!("[velos] Started '{}' (id={})", process_name, result.id);
     }
 
+    // Check if process survives initial startup (poll for up to 1.5s)
+    for _ in 0..6 {
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+        if let Ok(procs) = client.list().await {
+            if let Some(proc) = procs.iter().find(|p| p.id == result.id) {
+                if proc.status_str() == "errored" {
+                    eprintln!(
+                        "[velos] Warning: '{}' has crashed (restarts: {}). Check logs: velos logs {}",
+                        process_name, proc.restart_count, process_name
+                    );
+                    break;
+                }
+                // If still running with 0 restarts after first check, it's healthy
+                if proc.restart_count == 0 {
+                    break;
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 

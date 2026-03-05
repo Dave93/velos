@@ -441,8 +441,6 @@ pub const Supervisor = struct {
 
     /// Execute a restart for a process: create new pipes, fork/exec, update state.
     fn doRestart(self: *Self, process_id: u32, proc: *ProcessInfo) !void {
-        // Close old log pipes for this process
-        self.log_collector.removeProcess(process_id);
 
         // Create new pipes
         const stdout_pipe = try posix.pipe();
@@ -539,7 +537,9 @@ pub const Supervisor = struct {
         }
 
         try self.pid_to_id.put(pid, process_id);
-        try self.log_collector.addProcess(process_id, proc.config.name, stdout_pipe[0], stderr_pipe[0]);
+
+        // Update pipe fds without clearing ring buffer (preserves logs from previous attempts)
+        self.log_collector.updatePipes(process_id, stdout_pipe[0], stderr_pipe[0]);
 
         // Return pipe fds for event loop registration (caller must handle)
         // We store them as pending_pipe_fds for the event loop to pick up
