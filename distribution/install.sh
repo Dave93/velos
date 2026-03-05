@@ -31,20 +31,20 @@ fi
 # ── Helpers ───────────────────────────────────────────────────────
 
 info() {
-    printf "${BLUE}info${RESET} %s\n" "$1"
+    printf "${BLUE}info${RESET} %b\n" "$1"
 }
 
 warn() {
-    printf "${YELLOW}warn${RESET} %s\n" "$1" >&2
+    printf "${YELLOW}warn${RESET} %b\n" "$1" >&2
 }
 
 error() {
-    printf "${RED}error${RESET} %s\n" "$1" >&2
+    printf "${RED}error${RESET} %b\n" "$1" >&2
     exit 1
 }
 
 success() {
-    printf "${GREEN}success${RESET} %s\n" "$1"
+    printf "${GREEN}success${RESET} %b\n" "$1"
 }
 
 command_exists() {
@@ -356,8 +356,11 @@ main() {
             printf "\n"
             ;;
     esac
+    printf "  %b# Configure daemon to auto-start on boot%b\n" "$DIM" "$RESET"
+    printf "  velos startup\n"
+    printf "\n"
     printf "  %b# Start the daemon%b\n" "$DIM" "$RESET"
-    printf "  velos daemon &\n"
+    printf "  velos daemon start\n"
     printf "\n"
     printf "  %b# Start a process%b\n" "$DIM" "$RESET"
     printf "  velos start app.js --name my-app\n"
