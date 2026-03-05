@@ -46,10 +46,16 @@ pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
     }
 
     let mut builder = Builder::new();
-    builder.push_record(["id", "name", "pid", "mode", "status", "cpu", "mem", "uptime", "restarts"]);
+    builder.push_record([
+        "id", "name", "pid", "mode", "status", "cpu", "mem", "uptime", "restarts",
+    ]);
 
     for p in &procs {
-        let mode = if p.name.contains(':') { "cluster" } else { "fork" };
+        let mode = if p.name.contains(':') {
+            "cluster"
+        } else {
+            "fork"
+        };
         let status = p.status_str();
         let pid_str = if p.pid > 0 {
             p.pid.to_string()
@@ -92,7 +98,8 @@ pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
 
     for line in &mut lines {
         // Color statuses
-        if line.contains(" online ") || line.contains(" online │") || line.contains("│ online ") {
+        if line.contains(" online ") || line.contains(" online │") || line.contains("│ online ")
+        {
             *line = line.replace("online", "\x1b[32monline\x1b[0m");
         } else if line.contains("running") && !line.contains("\x1b[1;37m") {
             *line = line.replace("running", "\x1b[32mrunning\x1b[0m");
