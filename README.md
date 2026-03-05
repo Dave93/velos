@@ -111,9 +111,9 @@ Built-in [Model Context Protocol](https://modelcontextprotocol.io/) server with 
 
 #### Local (stdio) — AI client and Velos on the same machine
 
-Add to your AI client config:
+<details>
+<summary><b>Claude Code</b> — <code>.mcp.json</code> in project root</summary>
 
-**Claude Code** (`.mcp.json` in project root):
 ```json
 {
   "mcpServers": {
@@ -121,8 +121,11 @@ Add to your AI client config:
   }
 }
 ```
+</details>
 
-**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+<details>
+<summary><b>Claude Desktop</b> — <code>~/Library/Application Support/Claude/claude_desktop_config.json</code></summary>
+
 ```json
 {
   "mcpServers": {
@@ -130,8 +133,11 @@ Add to your AI client config:
   }
 }
 ```
+</details>
 
-**Cursor** (`.cursor/mcp.json`):
+<details>
+<summary><b>Cursor</b> — <code>.cursor/mcp.json</code></summary>
+
 ```json
 {
   "mcpServers": {
@@ -139,6 +145,31 @@ Add to your AI client config:
   }
 }
 ```
+</details>
+
+<details>
+<summary><b>OpenAI Codex</b> — <code>~/.codex/config.toml</code></summary>
+
+```toml
+[mcp_servers.velos]
+command = "velos"
+args = ["mcp-server"]
+```
+
+Or via CLI: `codex mcp add velos -- velos mcp-server`
+</details>
+
+<details>
+<summary><b>Gemini CLI</b> — <code>~/.gemini/settings.json</code></summary>
+
+```json
+{
+  "mcpServers": {
+    "velos": { "command": "velos", "args": ["mcp-server"] }
+  }
+}
+```
+</details>
 
 #### Remote (HTTP) — Velos on VPS, AI client on your laptop
 
@@ -147,7 +178,11 @@ Start MCP server on your VPS:
 velos mcp-server --port 8080
 ```
 
-Then configure your AI client with the URL:
+Then configure your AI client with the remote URL:
+
+<details>
+<summary><b>Claude Code / Claude Desktop / Cursor</b></summary>
+
 ```json
 {
   "mcpServers": {
@@ -155,6 +190,28 @@ Then configure your AI client with the URL:
   }
 }
 ```
+</details>
+
+<details>
+<summary><b>OpenAI Codex</b> — <code>~/.codex/config.toml</code></summary>
+
+```toml
+[mcp_servers.velos]
+url = "http://your-vps:8080/mcp"
+```
+</details>
+
+<details>
+<summary><b>Gemini CLI</b> — <code>~/.gemini/settings.json</code></summary>
+
+```json
+{
+  "mcpServers": {
+    "velos": { "url": "http://your-vps:8080/mcp" }
+  }
+}
+```
+</details>
 
 > **Tip:** For production, use HTTPS via a reverse proxy (nginx/caddy) or SSH tunnel:
 > ```bash
