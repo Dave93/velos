@@ -238,12 +238,34 @@ url = "http://your-vps:8080/mcp"
 
 Full reference: [docs/mcp-tools.md](docs/mcp-tools.md)
 
+### AI Output Mode (`--ai`)
+
+The `--ai` flag outputs compact JSON with abbreviated keys, designed to minimize token usage when piping Velos output to LLMs or AI agents.
+
+```bash
+# Standard output
+velos list
+#  ID  Name  PID    Status   Memory    Uptime  Restarts
+#  0   api   1234   online   45.2 MB   2h 30m  0
+
+# JSON output (full keys)
+velos list --json
+# [{"id": 0, "name": "api", "pid": 1234, "status": "online", "memory_bytes": 47395840, ...}]
+
+# AI output (abbreviated keys, ~40% fewer tokens)
+velos list --ai
+# [{"n":"api","i":0,"s":"online","m":47395840,"u":9000000,"r":0,"p":1234}]
+```
+
+**Key abbreviations:** `n`=name, `i`=id, `s`=status, `p`=pid, `m`=memory (bytes), `u`=uptime (ms), `r`=restarts, `c`=cpu (%), `t`=timestamp, `l`=level
+
+Supported commands: `velos list --ai`, `velos info <name> --ai`, `velos logs <name> --ai`
+
 ### Monitoring & Metrics
 - **TUI dashboard** (`velos monit`) — real-time process table, memory sparkline, live logs
 - **Prometheus endpoint** (`velos metrics -p 9615`) — scrape at `/metrics`
 - **OpenTelemetry** — OTLP export (`--otel-endpoint`)
 - **REST API** (`velos api -p 3100`) — JSON API + WebSocket real-time updates
-- **AI output** (`--ai`) — compact JSON with abbreviated keys for token efficiency
 
 ---
 
