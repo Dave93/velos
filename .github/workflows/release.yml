@@ -136,8 +136,9 @@ jobs:
 
       - name: Install nfpm
         run: |
-          NFPM_VERSION="2.41.1"
-          curl -sfL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_linux_amd64.tar.gz" | tar xz -C /usr/local/bin nfpm
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt-get update
+          sudo apt-get install -y nfpm
           nfpm --version
 
       - name: Extract version
