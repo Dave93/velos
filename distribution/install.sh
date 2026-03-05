@@ -352,7 +352,20 @@ main() {
         *)
             printf "  %bTo get started, restart your shell or run:%b\n" "$YELLOW" "$RESET"
             printf "\n"
-            printf "    export PATH=\"%s:\$PATH\"\n" "$BIN_DIR"
+            # Suggest sourcing the shell config that was updated
+            CURRENT_SHELL=$(basename "${SHELL:-/bin/sh}")
+            case "$CURRENT_SHELL" in
+                zsh)  printf "    source ~/.zshrc\n" ;;
+                bash)
+                    if [ -f "$HOME/.bash_profile" ]; then
+                        printf "    source ~/.bash_profile\n"
+                    else
+                        printf "    source ~/.bashrc\n"
+                    fi
+                    ;;
+                fish) printf "    source ~/.config/fish/conf.d/velos.fish\n" ;;
+                *)    printf "    export PATH=\"%s:\$PATH\"\n" "$BIN_DIR" ;;
+            esac
             printf "\n"
             ;;
     esac
