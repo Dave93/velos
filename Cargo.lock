@@ -2117,7 +2117,7 @@ dependencies = [
 
 [[package]]
 name = "velos-api"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "axum",
  "serde",
@@ -2130,7 +2130,7 @@ dependencies = [
 
 [[package]]
 name = "velos-cli"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2153,7 +2153,7 @@ dependencies = [
 
 [[package]]
 name = "velos-client"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "libc",
  "thiserror 2.0.18",
@@ -2163,7 +2163,7 @@ dependencies = [
 
 [[package]]
 name = "velos-config"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "serde",
  "thiserror 2.0.18",
@@ -2173,7 +2173,7 @@ dependencies = [
 
 [[package]]
 name = "velos-core"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "serde",
  "thiserror 2.0.18",
@@ -2181,11 +2181,11 @@ dependencies = [
 
 [[package]]
 name = "velos-ffi"
-version = "0.1.5"
+version = "0.1.6"
 
 [[package]]
 name = "velos-log-engine"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "regex",
  "serde",
@@ -2196,7 +2196,7 @@ dependencies = [
 
 [[package]]
 name = "velos-mcp"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "axum",
  "futures",
@@ -2214,7 +2214,7 @@ dependencies = [
 
 [[package]]
 name = "velos-metrics"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "axum",
  "opentelemetry",

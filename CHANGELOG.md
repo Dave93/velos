@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-03-05
+
+### Added
+- CPU% monitoring in `velos list` — delta-based calculation every ~2s
+- macOS: CPU time via `proc_pid_rusage` with Mach timebase conversion
+- Linux: CPU time via `/proc/[pid]/stat` (utime + stime)
+- Real CPU data in Prometheus metrics (`velos_process_cpu_percent`)
+
 ## [0.1.6] - 2026-03-05
 
 ### Fixed
