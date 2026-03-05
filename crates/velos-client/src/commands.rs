@@ -45,6 +45,20 @@ impl VelosClient {
         self.check_response(&resp)
     }
 
+    /// Send a signal to a process.
+    pub async fn signal(&mut self, id: u32, signal: u8) -> Result<(), VelosError> {
+        let payload = StopPayload {
+            process_id: id,
+            signal,
+            timeout_ms: 0,
+        };
+        let resp = self
+            .conn
+            .request(CommandCode::ProcessStop, payload.encode())
+            .await?;
+        self.check_response(&resp)
+    }
+
     /// List all processes.
     pub async fn list(&mut self) -> Result<Vec<ProcessInfo>, VelosError> {
         let resp = self
