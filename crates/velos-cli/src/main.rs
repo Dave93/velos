@@ -55,6 +55,12 @@ enum Commands {
         /// Process name (defaults to script basename)
         #[arg(short, long)]
         name: Option<String>,
+        /// Working directory (defaults to current directory)
+        #[arg(long)]
+        cwd: Option<String>,
+        /// Interpreter to run the script with (e.g. node, python3, bun)
+        #[arg(long)]
+        interpreter: Option<String>,
         /// Load processes from TOML config file
         #[arg(long)]
         config: Option<String>,
@@ -257,6 +263,8 @@ async fn main() {
         Commands::Start {
             script,
             name,
+            cwd,
+            interpreter,
             json,
             config,
             watch,
@@ -271,6 +279,8 @@ async fn main() {
             commands::start::run(commands::start::StartArgs {
                 script,
                 name,
+                cwd,
+                interpreter,
                 json,
                 config,
                 watch,

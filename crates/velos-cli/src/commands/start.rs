@@ -4,6 +4,8 @@ use velos_core::VelosError;
 pub struct StartArgs {
     pub script: Option<String>,
     pub name: Option<String>,
+    pub cwd: Option<String>,
+    pub interpreter: Option<String>,
     pub json: bool,
     pub config: Option<String>,
     pub watch: bool,
@@ -36,9 +38,11 @@ pub async fn run(args: StartArgs) -> Result<(), VelosError> {
             .to_string()
     });
 
-    let cwd = std::env::current_dir()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| ".".to_string());
+    let cwd = args.cwd.unwrap_or_else(|| {
+        std::env::current_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| ".".to_string())
+    });
 
     let autorestart = !args.no_autorestart;
     let max_restarts = args.max_restarts.unwrap_or(15);
@@ -56,7 +60,7 @@ pub async fn run(args: StartArgs) -> Result<(), VelosError> {
         name: process_name.clone(),
         script,
         cwd,
-        interpreter: None,
+        interpreter: args.interpreter.clone(),
         kill_timeout_ms: 5000,
         autorestart,
         max_restarts,
