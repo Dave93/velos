@@ -107,7 +107,7 @@ get_latest_version() {
 
     if [ -z "$ver" ]; then
         # Fallback to hardcoded version
-        echo "0.1.2"
+        echo "0.1.3"
     else
         echo "$ver"
     fi
