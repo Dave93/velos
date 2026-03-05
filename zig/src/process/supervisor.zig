@@ -46,6 +46,7 @@ pub const ProcessInfo = struct {
     pid: posix.pid_t,
     status: ProcessStatus,
     memory_bytes: u64,
+    cpu_percent: u16 = 0, // CPU% * 10 (e.g. 253 = 25.3%)
     uptime_ms: u64,
     restart_count: u32,
     start_time_ms: u64,
@@ -53,6 +54,9 @@ pub const ProcessInfo = struct {
     consecutive_crashes: u32 = 0,
     last_restart_ms: u64 = 0,
     instance_id: u32 = 0, // cluster instance ID
+    // For CPU% delta calculation
+    prev_cpu_time_ns: u64 = 0,
+    prev_wall_time_ns: u64 = 0,
 };
 
 pub const Supervisor = struct {
@@ -620,6 +624,7 @@ pub const Supervisor = struct {
                 .pid = proc.pid,
                 .status = proc.status,
                 .memory_bytes = proc.memory_bytes,
+                .cpu_percent = proc.cpu_percent,
                 .uptime_ms = proc.uptime_ms,
                 .restart_count = proc.restart_count,
                 .start_time_ms = proc.start_time_ms,
@@ -683,28 +688,42 @@ pub const Supervisor = struct {
         return error.RestartFailed;
     }
 
-    /// Update resource usage (RSS memory) for all running processes.
+    /// Update resource usage (RSS memory + CPU%) for all running processes.
     /// Should be called periodically (every ~2 seconds).
     pub fn updateResourceUsage(self: *Self) void {
         const now: u64 = @intCast(std.time.milliTimestamp());
         if (now - self.last_resource_check_ms < 2000) return;
         self.last_resource_check_ms = now;
 
+        const wall_now_ns: u64 = @intCast(std.time.nanoTimestamp());
+
         var it = self.processes.valueIterator();
         while (it.next()) |proc_ptr| {
             const proc = proc_ptr.*;
             if (proc.status != .running) continue;
 
-            const rss = getProcessRss(proc.pid);
-            if (rss > 0) {
-                proc.memory_bytes = rss;
+            const usage = getProcessUsage(proc.pid);
+            if (usage.rss > 0) {
+                proc.memory_bytes = usage.rss;
                 // max_memory_restart check
-                if (proc.config.max_memory_restart > 0 and rss > proc.config.max_memory_restart) {
+                if (proc.config.max_memory_restart > 0 and usage.rss > proc.config.max_memory_restart) {
                     self.doRestart(proc.id, proc) catch {
                         proc.status = .errored;
                     };
                 }
             }
+
+            // CPU% calculation via delta
+            if (usage.cpu_time_ns > 0 and proc.prev_wall_time_ns > 0) {
+                const cpu_delta = usage.cpu_time_ns -| proc.prev_cpu_time_ns;
+                const wall_delta = wall_now_ns -| proc.prev_wall_time_ns;
+                if (wall_delta > 0) {
+                    // cpu_percent * 10 for one decimal place
+                    proc.cpu_percent = @intCast(@min(cpu_delta * 1000 / wall_delta, 9999));
+                }
+            }
+            proc.prev_cpu_time_ns = usage.cpu_time_ns;
+            proc.prev_wall_time_ns = wall_now_ns;
         }
     }
 
@@ -1024,16 +1043,21 @@ fn setIpcEnv(child_fd: posix.fd_t) void {
     _ = setenv("VELOS_IPC_FD", @ptrCast(&fd_val), 1);
 }
 
-fn getProcessRss(pid: posix.pid_t) u64 {
+const ProcessUsage = struct {
+    rss: u64,
+    cpu_time_ns: u64, // user + system time in nanoseconds
+};
+
+fn getProcessUsage(pid: posix.pid_t) ProcessUsage {
     if (comptime builtin.os.tag == .macos) {
-        return getProcessRssMacos(pid);
+        return getProcessUsageMacos(pid);
     } else if (comptime builtin.os.tag == .linux) {
-        return getProcessRssLinux(pid);
+        return getProcessUsageLinux(pid);
     }
-    return 0;
+    return .{ .rss = 0, .cpu_time_ns = 0 };
 }
 
-// macOS-specific RSS monitoring (only compiled on macOS)
+// macOS-specific monitoring via proc_pid_rusage
 const macos_rss = if (builtin.os.tag == .macos) struct {
     extern "c" fn proc_pid_rusage(pid: c_int, flavor: c_int, buffer: *anyopaque) c_int;
     const RUSAGE_INFO_V0 = 0;
@@ -1050,31 +1074,101 @@ const macos_rss = if (builtin.os.tag == .macos) struct {
         ri_proc_start_abstime: u64 = 0,
         ri_proc_exit_abstime: u64 = 0,
     };
+
+    const MachTimebaseInfo = extern struct {
+        numer: u32,
+        denom: u32,
+    };
+    extern "c" fn mach_timebase_info(info: *MachTimebaseInfo) c_int;
 } else struct {};
 
-fn getProcessRssMacos(pid: posix.pid_t) u64 {
-    if (comptime builtin.os.tag != .macos) return 0;
-    var rusage: macos_rss.RusageInfoV0 = .{};
-    const ret = macos_rss.proc_pid_rusage(@intCast(pid), macos_rss.RUSAGE_INFO_V0, @ptrCast(&rusage));
-    if (ret != 0) return 0;
-    return rusage.ri_resident_size;
+// Cached mach timebase info (global, initialized on first use)
+var g_mach_numer: u32 = 0;
+var g_mach_denom: u32 = 0;
+
+fn getMachTimebaseNumer() u32 {
+    if (comptime builtin.os.tag != .macos) return 1;
+    if (g_mach_numer == 0) {
+        var info = macos_rss.MachTimebaseInfo{ .numer = 0, .denom = 0 };
+        _ = macos_rss.mach_timebase_info(&info);
+        g_mach_numer = if (info.numer > 0) info.numer else 1;
+        g_mach_denom = if (info.denom > 0) info.denom else 1;
+    }
+    return g_mach_numer;
 }
 
-fn getProcessRssLinux(pid: posix.pid_t) u64 {
-    // Read /proc/[pid]/statm — second field is RSS in pages
+fn getMachTimebaseDenom() u32 {
+    _ = getMachTimebaseNumer();
+    return g_mach_denom;
+}
+
+fn getProcessUsageMacos(pid: posix.pid_t) ProcessUsage {
+    if (comptime builtin.os.tag != .macos) return .{ .rss = 0, .cpu_time_ns = 0 };
+    var rusage: macos_rss.RusageInfoV0 = .{};
+    const ret = macos_rss.proc_pid_rusage(@intCast(pid), macos_rss.RUSAGE_INFO_V0, @ptrCast(&rusage));
+    if (ret != 0) return .{ .rss = 0, .cpu_time_ns = 0 };
+
+    // Convert Mach absolute time ticks to nanoseconds
+    const ticks = rusage.ri_user_time + rusage.ri_system_time;
+    const numer: u64 = getMachTimebaseNumer();
+    const denom: u64 = getMachTimebaseDenom();
+    const cpu_ns = ticks * numer / denom;
+
+    return .{
+        .rss = rusage.ri_resident_size,
+        .cpu_time_ns = cpu_ns,
+    };
+}
+
+fn getProcessUsageLinux(pid: posix.pid_t) ProcessUsage {
+    var result = ProcessUsage{ .rss = 0, .cpu_time_ns = 0 };
+
+    // RSS from /proc/[pid]/statm
     var path_buf: [64]u8 = undefined;
-    const path = std.fmt.bufPrint(&path_buf, "/proc/{d}/statm", .{pid}) catch return 0;
-    const file = std.fs.openFileAbsolute(path, .{}) catch return 0;
-    defer file.close();
-    var buf: [256]u8 = undefined;
-    const n = file.readAll(&buf) catch return 0;
-    const content = buf[0..n];
-    // Format: size resident shared text lib data dt
-    var it = std.mem.splitScalar(u8, content, ' ');
-    _ = it.next(); // skip size
-    const rss_str = it.next() orelse return 0;
-    const rss_pages = std.fmt.parseInt(u64, rss_str, 10) catch return 0;
-    return rss_pages * 4096; // assume 4K pages
+    const statm_path = std.fmt.bufPrint(&path_buf, "/proc/{d}/statm", .{pid}) catch return result;
+    if (std.fs.openFileAbsolute(statm_path, .{})) |file| {
+        defer file.close();
+        var buf: [256]u8 = undefined;
+        const n = file.readAll(&buf) catch 0;
+        if (n > 0) {
+            var it = std.mem.splitScalar(u8, buf[0..n], ' ');
+            _ = it.next(); // skip size
+            if (it.next()) |rss_str| {
+                const rss_pages = std.fmt.parseInt(u64, rss_str, 10) catch 0;
+                result.rss = rss_pages * 4096;
+            }
+        }
+    } else |_| {}
+
+    // CPU time from /proc/[pid]/stat (fields 14=utime, 15=stime in clock ticks)
+    const stat_path = std.fmt.bufPrint(&path_buf, "/proc/{d}/stat", .{pid}) catch return result;
+    if (std.fs.openFileAbsolute(stat_path, .{})) |file| {
+        defer file.close();
+        var buf: [1024]u8 = undefined;
+        const n = file.readAll(&buf) catch 0;
+        if (n > 0) {
+            // Skip past comm field (in parens) to avoid spaces in process name
+            const content = buf[0..n];
+            if (std.mem.lastIndexOf(u8, content, ")")) |close_paren| {
+                var it = std.mem.splitScalar(u8, content[close_paren + 2 ..], ' ');
+                // Fields after ')': state(3), ppid(4), pgrp(5)... utime(14), stime(15)
+                // From close_paren+2: state is field 0, so utime is field 11, stime is field 12
+                var field: usize = 0;
+                var utime: u64 = 0;
+                var stime: u64 = 0;
+                while (it.next()) |val| {
+                    if (field == 11) utime = std.fmt.parseInt(u64, val, 10) catch 0;
+                    if (field == 12) stime = std.fmt.parseInt(u64, val, 10) catch 0;
+                    if (field > 12) break;
+                    field += 1;
+                }
+                // Convert clock ticks to nanoseconds (assume 100 Hz = 10ms per tick)
+                result.cpu_time_ns = (utime + stime) * 10_000_000;
+            }
+        }
+    } else |_| {}
+
+    return result;
 }
 
 fn detectShebang(script: []const u8, cwd: []const u8) ?[*:0]const u8 {

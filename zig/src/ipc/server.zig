@@ -349,7 +349,7 @@ pub const IpcServer = struct {
         const procs = try self.supervisor.listProcesses();
         defer self.supervisor.freeProcessList(procs);
 
-        // Encode: count(u32) + [id(u32) + name(string) + pid(u32) + status(u8) + memory(u64) + uptime(u64) + restarts(u32)]...
+        // Encode: count(u32) + [id(u32) + name(string) + pid(u32) + status(u8) + memory(u64) + uptime(u64) + restarts(u32) + cpu(u16)]...
         var buf: std.ArrayList(u8) = .{};
         defer buf.deinit(self.allocator);
 
@@ -386,6 +386,10 @@ pub const IpcServer = struct {
             // restart_count
             std.mem.writeInt(u32, tmp[0..4], proc.restart_count, .little);
             try buf.appendSlice(self.allocator, tmp[0..4]);
+
+            // cpu_percent (u16, value * 10, e.g. 253 = 25.3%)
+            std.mem.writeInt(u16, tmp[0..2], proc.cpu_percent, .little);
+            try buf.appendSlice(self.allocator, tmp[0..2]);
         }
 
         try self.sendResponse(client_fd, req_id, .ok, buf.items);

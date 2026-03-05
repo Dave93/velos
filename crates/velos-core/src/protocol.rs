@@ -72,6 +72,15 @@ impl<'a> BinaryReader<'a> {
         Ok(val)
     }
 
+    pub fn read_u16(&mut self) -> Result<u16, crate::VelosError> {
+        if self.pos + 2 > self.data.len() {
+            return Err(crate::VelosError::ProtocolError("truncated u16".into()));
+        }
+        let val = u16::from_le_bytes(self.data[self.pos..self.pos + 2].try_into().unwrap());
+        self.pos += 2;
+        Ok(val)
+    }
+
     pub fn read_u32(&mut self) -> Result<u32, crate::VelosError> {
         if self.pos + 4 > self.data.len() {
             return Err(crate::VelosError::ProtocolError("truncated u32".into()));
@@ -389,6 +398,7 @@ pub struct ProcessInfo {
     pub memory_bytes: u64,
     pub uptime_ms: u64,
     pub restart_count: u32,
+    pub cpu_percent: f32, // e.g. 25.3
 }
 
 impl ProcessInfo {
@@ -408,14 +418,24 @@ pub fn decode_process_list(data: &[u8]) -> Result<Vec<ProcessInfo>, crate::Velos
     let count = r.read_u32()? as usize;
     let mut procs = Vec::with_capacity(count);
     for _ in 0..count {
+        let id = r.read_u32()?;
+        let name = r.read_string()?;
+        let pid = r.read_u32()?;
+        let status = r.read_u8()?;
+        let memory_bytes = r.read_u64()?;
+        let uptime_ms = r.read_u64()?;
+        let restart_count = r.read_u32()?;
+        // cpu_percent: u16 * 10, backward compatible (0 if not present)
+        let cpu_raw = if r.remaining() >= 2 { r.read_u16()? } else { 0 };
         procs.push(ProcessInfo {
-            id: r.read_u32()?,
-            name: r.read_string()?,
-            pid: r.read_u32()?,
-            status: r.read_u8()?,
-            memory_bytes: r.read_u64()?,
-            uptime_ms: r.read_u64()?,
-            restart_count: r.read_u32()?,
+            id,
+            name,
+            pid,
+            status,
+            memory_bytes,
+            uptime_ms,
+            restart_count,
+            cpu_percent: cpu_raw as f32 / 10.0,
         });
     }
     Ok(procs)

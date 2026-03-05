@@ -20,6 +20,7 @@ pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
                     "n": p.name,
                     "i": p.id,
                     "s": p.status_str(),
+                    "c": p.cpu_percent,
                     "m": p.memory_bytes,
                     "u": p.uptime_ms,
                     "r": p.restart_count,
@@ -45,7 +46,7 @@ pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
     }
 
     let mut builder = Builder::new();
-    builder.push_record(["id", "name", "pid", "mode", "status", "uptime", "restarts", "mem"]);
+    builder.push_record(["id", "name", "pid", "mode", "status", "cpu", "mem", "uptime", "restarts"]);
 
     for p in &procs {
         let mode = if p.name.contains(':') { "cluster" } else { "fork" };
@@ -60,6 +61,11 @@ pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
         } else {
             "0b".to_string()
         };
+        let cpu = if p.cpu_percent > 0.0 {
+            format!("{:.1}%", p.cpu_percent)
+        } else {
+            "0%".to_string()
+        };
 
         builder.push_record([
             &p.id.to_string(),
@@ -67,9 +73,10 @@ pub async fn run(json: bool, ai: bool) -> Result<(), VelosError> {
             &pid_str,
             mode,
             status,
+            &cpu,
+            &mem,
             &format_uptime(p.uptime_ms),
             &p.restart_count.to_string(),
-            &mem,
         ]);
     }
 

@@ -82,13 +82,12 @@ fn format_metrics(processes: &[ProcessInfo]) -> String {
         "gauge",
     );
     for p in processes {
-        // CPU is not available from the list endpoint; emit 0 as placeholder.
-        // A future MetricsGet IPC command can provide real CPU data.
         writeln!(
             out,
-            "velos_process_cpu_percent{{name=\"{}\",instance=\"{}\"}} 0",
+            "velos_process_cpu_percent{{name=\"{}\",instance=\"{}\"}} {:.1}",
             escape(&p.name),
-            p.id
+            p.id,
+            p.cpu_percent
         )
         .ok();
     }
@@ -214,6 +213,7 @@ mod tests {
             memory_bytes: 47_185_920,
             uptime_ms: 86_400_000,
             restart_count: 3,
+            cpu_percent: 12.5,
         }];
         let out = format_metrics(&procs);
         assert!(out.contains("velos_process_memory_bytes{name=\"api\",instance=\"0\"} 47185920"));
