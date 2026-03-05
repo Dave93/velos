@@ -96,17 +96,20 @@ detect_version() {
 }
 
 get_latest_version() {
+    local ver=""
     if command_exists curl; then
-        curl -fsSL "https://api.github.com/repos/Dave93/velos/releases/latest" 2>/dev/null |
-            sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -1
+        ver=$(curl -fsSL "https://api.github.com/repos/Dave93/velos/releases/latest" 2>/dev/null |
+            sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -1)
     elif command_exists wget; then
-        wget -qO- "https://api.github.com/repos/Dave93/velos/releases/latest" 2>/dev/null |
-            sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -1
+        ver=$(wget -qO- "https://api.github.com/repos/Dave93/velos/releases/latest" 2>/dev/null |
+            sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -1)
     fi
 
-    if [ -z "$VERSION" ]; then
+    if [ -z "$ver" ]; then
         # Fallback to hardcoded version
         echo "0.1.0"
+    else
+        echo "$ver"
     fi
 }
 
