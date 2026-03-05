@@ -23,6 +23,9 @@ done
 # Copy .deb files to pool
 cp "${DEB_DIR}"/*.deb "${OUTPUT_DIR}/pool/${COMPONENT}/v/velos/" 2>/dev/null || true
 
+# Make OUTPUT_DIR absolute
+OUTPUT_DIR="$(cd "${OUTPUT_DIR}" && pwd)"
+
 # Generate Packages files for each architecture
 for arch in amd64 arm64; do
     echo "==> Generating Packages for ${arch}"
