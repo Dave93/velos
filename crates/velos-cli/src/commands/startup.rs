@@ -122,10 +122,23 @@ pub async fn run_startup() -> Result<(), VelosError> {
             let path = systemd_service_path();
             std::fs::write(&path, unit)?;
             println!("[velos] Systemd unit written to {}", path.display());
-            println!();
-            println!("  Enable and start:");
-            println!("    systemctl --user daemon-reload");
-            println!("    systemctl --user enable --now velos-daemon");
+
+            // Auto-enable and start
+            let reload = std::process::Command::new("systemctl")
+                .args(["--user", "daemon-reload"])
+                .status();
+            let enable = std::process::Command::new("systemctl")
+                .args(["--user", "enable", "--now", "velos-daemon"])
+                .status();
+
+            if reload.is_ok() && enable.is_ok() {
+                println!("[velos] Daemon enabled and started via systemd");
+            } else {
+                println!();
+                println!("  Enable and start manually:");
+                println!("    systemctl --user daemon-reload");
+                println!("    systemctl --user enable --now velos-daemon");
+            }
             println!();
             println!("  Check status:");
             println!("    systemctl --user status velos-daemon");
@@ -133,11 +146,28 @@ pub async fn run_startup() -> Result<(), VelosError> {
         "launchd" => {
             let plist = generate_launchd_plist(&velos_bin);
             let path = launchd_plist_path();
+
+            // Unload first if already loaded (avoids "service already loaded" error)
+            std::process::Command::new("launchctl")
+                .args(["unload", &path.to_string_lossy()])
+                .output()
+                .ok();
+
             std::fs::write(&path, plist)?;
             println!("[velos] Launchd plist written to {}", path.display());
-            println!();
-            println!("  Load and start:");
-            println!("    launchctl load {}", path.display());
+
+            // Auto-load and start
+            let status = std::process::Command::new("launchctl")
+                .args(["load", &path.to_string_lossy()])
+                .status();
+
+            if status.map(|s| s.success()).unwrap_or(false) {
+                println!("[velos] Daemon loaded and started via launchd");
+            } else {
+                println!();
+                println!("  Load and start manually:");
+                println!("    launchctl load {}", path.display());
+            }
             println!();
             println!("  Check status:");
             println!("    launchctl list | grep velos");
@@ -164,11 +194,24 @@ pub async fn run_startup() -> Result<(), VelosError> {
                     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))?;
                 }
                 println!("[velos] OpenRC script written to {}", path.display());
+
+                // Auto-enable and start
+                let add = std::process::Command::new("rc-update")
+                    .args(["add", "velos", "default"])
+                    .status();
+                let start = std::process::Command::new("rc-service")
+                    .args(["velos", "start"])
+                    .status();
+
+                if add.is_ok() && start.is_ok() {
+                    println!("[velos] Daemon enabled and started via OpenRC");
+                } else {
+                    println!();
+                    println!("  Enable and start manually:");
+                    println!("    rc-update add velos default");
+                    println!("    rc-service velos start");
+                }
             }
-            println!();
-            println!("  Enable and start:");
-            println!("    rc-update add velos default");
-            println!("    rc-service velos start");
         }
         _ => {
             eprintln!("[velos] No supported init system detected (systemd, launchd, openrc)");
@@ -201,13 +244,17 @@ pub async fn run_unstartup() -> Result<(), VelosError> {
         "systemd" => {
             let path = systemd_service_path();
             if path.exists() {
+                std::process::Command::new("systemctl")
+                    .args(["--user", "disable", "--now", "velos-daemon"])
+                    .output()
+                    .ok();
                 std::fs::remove_file(&path)?;
+                std::process::Command::new("systemctl")
+                    .args(["--user", "daemon-reload"])
+                    .output()
+                    .ok();
                 removed = true;
-                println!("[velos] Removed {}", path.display());
-                println!();
-                println!("  Disable the service:");
-                println!("    systemctl --user disable velos-daemon");
-                println!("    systemctl --user daemon-reload");
+                println!("[velos] Stopped, disabled and removed {}", path.display());
             }
         }
         "launchd" => {
