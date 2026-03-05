@@ -254,6 +254,7 @@ if __name__ == '__main__':
         payload += struct.pack('<I', cfg.get('listen_timeout_ms', 8000))
         payload += struct.pack('B', cfg.get('shutdown_with_message', 0))
         payload += struct.pack('<I', cfg.get('instances', 1))
+        payload += write_string(cfg.get('env_vars', ''))
         r = send_recv(sock, 2, 0x01, payload)
         if r and r['status'] == 0 and len(r['payload']) >= 4:
             pid = struct.unpack_from('<I', r['payload'], 0)[0]

@@ -38,6 +38,7 @@ pub const ProcessConfig = struct {
     shutdown_with_message: bool = false,
     instances: u32 = 1, // cluster mode: number of instances
     instance_id: u32 = 0, // this instance's 0-based ID
+    env_vars: ?[]const u8 = null, // newline-separated KEY=VALUE pairs
 };
 
 pub const ProcessInfo = struct {
@@ -221,6 +222,9 @@ pub const Supervisor = struct {
                 setInstanceEnv(config.instance_id);
             }
 
+            // Apply user environment variables before exec
+            applyEnvVars(config.env_vars);
+
             // Change working directory
             _ = std.c.chdir(cwd_z);
 
@@ -229,7 +233,16 @@ pub const Supervisor = struct {
 
             // Exec
             const argv = argv_list.items;
-            _ = posix.execvpeZ(argv[0].?, @ptrCast(argv.ptr), std.c.environ) catch {};
+            const exec_err = posix.execvpeZ(argv[0].?, @ptrCast(argv.ptr), std.c.environ);
+            // If we get here, exec failed — write error to stderr (captured by pipe -> shows in logs)
+            const err_name = @errorName(exec_err);
+            _ = posix.write(posix.STDERR_FILENO, "velos: exec failed for '") catch {};
+            if (argv[0]) |a| {
+                _ = posix.write(posix.STDERR_FILENO, std.mem.span(a)) catch {};
+            }
+            _ = posix.write(posix.STDERR_FILENO, "': ") catch {};
+            _ = posix.write(posix.STDERR_FILENO, err_name) catch {};
+            _ = posix.write(posix.STDERR_FILENO, "\n") catch {};
             posix.exit(127);
         }
 
@@ -277,6 +290,7 @@ pub const Supervisor = struct {
                 .shutdown_with_message = config.shutdown_with_message,
                 .instances = config.instances,
                 .instance_id = config.instance_id,
+                .env_vars = if (config.env_vars) |ev| try self.allocator.dupe(u8, ev) else null,
             },
             .instance_id = config.instance_id,
         };
@@ -510,10 +524,21 @@ pub const Supervisor = struct {
                 setInstanceEnv(proc.config.instance_id);
             }
 
+            // Apply user environment variables before exec
+            applyEnvVars(proc.config.env_vars);
+
             _ = std.c.chdir(cwd_z);
             _ = std.c.setsid();
             const argv = argv_list.items;
-            _ = posix.execvpeZ(argv[0].?, @ptrCast(argv.ptr), std.c.environ) catch {};
+            const exec_err = posix.execvpeZ(argv[0].?, @ptrCast(argv.ptr), std.c.environ);
+            const err_name = @errorName(exec_err);
+            _ = posix.write(posix.STDERR_FILENO, "velos: exec failed for '") catch {};
+            if (argv[0]) |a| {
+                _ = posix.write(posix.STDERR_FILENO, std.mem.span(a)) catch {};
+            }
+            _ = posix.write(posix.STDERR_FILENO, "': ") catch {};
+            _ = posix.write(posix.STDERR_FILENO, err_name) catch {};
+            _ = posix.write(posix.STDERR_FILENO, "\n") catch {};
             posix.exit(127);
         }
 
@@ -1041,6 +1066,46 @@ fn setIpcEnv(child_fd: posix.fd_t) void {
     var fd_val: [21]u8 = [_]u8{0} ** 21;
     @memcpy(fd_val[0..fd_str.len], fd_str);
     _ = setenv("VELOS_IPC_FD", @ptrCast(&fd_val), 1);
+}
+
+/// Apply user environment variables (newline-separated KEY=VALUE pairs) before exec.
+/// Called in child process only — uses stack buffers since we're about to exec.
+fn applyEnvVars(env_vars: ?[]const u8) void {
+    const env_str = env_vars orelse return;
+    var start: usize = 0;
+    var i: usize = 0;
+    while (i <= env_str.len) : (i += 1) {
+        if (i == env_str.len or env_str[i] == '\n') {
+            const entry = env_str[start..i];
+            if (entry.len > 0) {
+                applyOneEnvVar(entry);
+            }
+            start = i + 1;
+        }
+    }
+}
+
+fn applyOneEnvVar(entry: []const u8) void {
+    // Find '=' separator
+    var eq_pos: ?usize = null;
+    for (entry, 0..) |c, idx| {
+        if (c == '=') {
+            eq_pos = idx;
+            break;
+        }
+    }
+    const ep = eq_pos orelse return;
+    const key = entry[0..ep];
+    const val = entry[ep + 1 ..];
+    if (key.len == 0 or key.len >= 255 or val.len >= 4095) return;
+
+    var key_buf: [256]u8 = undefined;
+    var val_buf: [4096]u8 = undefined;
+    @memcpy(key_buf[0..key.len], key);
+    key_buf[key.len] = 0;
+    @memcpy(val_buf[0..val.len], val);
+    val_buf[val.len] = 0;
+    _ = setenv(@ptrCast(key_buf[0..key.len :0]), @ptrCast(val_buf[0..val.len :0]), 1);
 }
 
 const ProcessUsage = struct {

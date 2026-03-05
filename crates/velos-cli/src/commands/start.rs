@@ -56,6 +56,11 @@ pub async fn run(args: StartArgs) -> Result<(), VelosError> {
 
     let instances = parse_instances(&args.instances)?;
 
+    let env_vars: String = std::env::vars()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
     let payload = StartPayload {
         name: process_name.clone(),
         script,
@@ -77,6 +82,7 @@ pub async fn run(args: StartArgs) -> Result<(), VelosError> {
         listen_timeout_ms: 8000,
         shutdown_with_message: args.shutdown_with_message,
         instances,
+        env_vars,
     };
 
     let result = client.start(payload).await?;
@@ -129,6 +135,11 @@ async fn run_from_config(config_path: &str, args: &StartArgs) -> Result<(), Velo
 
     let mut client = super::connect().await?;
 
+    let env_vars: String = std::env::vars()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
     for (key, app) in &config.apps {
         let app_name = app.name.clone().unwrap_or_else(|| key.clone());
         let autorestart = if args.no_autorestart {
@@ -167,6 +178,7 @@ async fn run_from_config(config_path: &str, args: &StartArgs) -> Result<(), Velo
             listen_timeout_ms: 8000,
             shutdown_with_message: false,
             instances: app.instances,
+            env_vars: env_vars.clone(),
         };
 
         let result = client.start(payload).await?;

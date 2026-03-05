@@ -116,6 +116,7 @@ async fn process_start(args: Value) -> Result<String, VelosError> {
         listen_timeout_ms: 8000,
         shutdown_with_message: false,
         instances: 1,
+        env_vars: String::new(),
     };
 
     let mut client = connect().await?;

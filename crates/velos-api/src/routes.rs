@@ -166,6 +166,7 @@ async fn start_process(
         listen_timeout_ms: body.listen_timeout_ms,
         shutdown_with_message: body.shutdown_with_message,
         instances: body.instances.unwrap_or(1),
+        env_vars: String::new(),
     };
 
     let result = client.start(payload).await.map_err(daemon_err)?;

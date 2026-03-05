@@ -203,6 +203,12 @@ pub const Persistence = struct {
             // instance_id
             std.mem.writeInt(u32, tmp[0..4], cfg.instance_id, .little);
             try file.writeAll(tmp[0..4]);
+
+            // env_vars
+            const ev = cfg.env_vars orelse "";
+            std.mem.writeInt(u32, tmp[0..4], @intCast(ev.len), .little);
+            try file.writeAll(tmp[0..4]);
+            if (ev.len > 0) try file.writeAll(ev);
         }
     }
 
@@ -354,6 +360,16 @@ pub const Persistence = struct {
             off.* += 4;
         }
 
+        // env_vars — optional for backward compat
+        var env_vars: ?[]const u8 = null;
+        if (off.* + 4 <= data.len) {
+            const ev_str = try self.readBinString(data, off);
+            env_vars = if (ev_str.len == 0) blk: {
+                self.allocator.free(ev_str);
+                break :blk null;
+            } else ev_str;
+        }
+
         return ProcessConfig{
             .name = name,
             .script = script,
@@ -376,6 +392,7 @@ pub const Persistence = struct {
             .shutdown_with_message = shutdown_with_message,
             .instances = instances,
             .instance_id = instance_id,
+            .env_vars = env_vars,
         };
     }
 

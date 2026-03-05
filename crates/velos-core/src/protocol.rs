@@ -283,6 +283,7 @@ pub struct StartPayload {
     pub listen_timeout_ms: u32,
     pub shutdown_with_message: bool,
     pub instances: u32,
+    pub env_vars: String,
 }
 
 impl StartPayload {
@@ -308,6 +309,7 @@ impl StartPayload {
         w.write_u32(self.listen_timeout_ms);
         w.write_u8(if self.shutdown_with_message { 1 } else { 0 });
         w.write_u32(self.instances);
+        w.write_string(&self.env_vars);
         w.buf
     }
 }
@@ -691,6 +693,7 @@ mod tests {
             listen_timeout_ms: 8000,
             shutdown_with_message: false,
             instances: 1,
+            env_vars: "FOO=bar\nBAZ=qux".into(),
         };
         let bytes = payload.encode();
 
@@ -715,6 +718,7 @@ mod tests {
         assert_eq!(r.read_u32().unwrap(), 8000); // listen_timeout_ms
         assert_eq!(r.read_u8().unwrap(), 0); // shutdown_with_message
         assert_eq!(r.read_u32().unwrap(), 1); // instances
+        assert_eq!(r.read_string().unwrap(), "FOO=bar\nBAZ=qux"); // env_vars
     }
 
     #[test]

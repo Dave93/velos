@@ -235,7 +235,12 @@ pub const IpcServer = struct {
         // Phase 6: cluster mode instances field
         const has_extended3 = off < data.len;
         const instances_r = protocol.readU32(data, off);
+        off = instances_r.next;
         const instances: u32 = if (has_extended3 and instances_r.val > 0) instances_r.val else 1;
+
+        // env_vars (newline-separated KEY=VALUE pairs)
+        const has_extended4 = off < data.len;
+        const env_vars_r = protocol.readString(data, off);
 
         const config = ProcessConfig{
             .name = name_r.val,
@@ -258,6 +263,7 @@ pub const IpcServer = struct {
             .listen_timeout_ms = if (has_extended2 and listen_timeout_r.val != 0) listen_timeout_r.val else 8000,
             .shutdown_with_message = if (has_extended2) shutdown_msg_r.val != 0 else false,
             .instances = instances,
+            .env_vars = if (has_extended4 and env_vars_r.val.len > 0) env_vars_r.val else null,
         };
 
         if (instances > 1) {
@@ -640,6 +646,7 @@ pub const IpcServer = struct {
                 if (cfg.watch_paths) |wp| self.allocator.free(wp);
                 if (cfg.watch_ignore) |wi| self.allocator.free(wi);
                 if (cfg.cron_restart) |cr| self.allocator.free(cr);
+                if (cfg.env_vars) |ev| self.allocator.free(ev);
             }
             self.allocator.free(configs);
         }
