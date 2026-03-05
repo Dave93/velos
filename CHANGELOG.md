@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-03-05
+
+### Added
+- Redesign `velos monit` TUI dashboard — Catppuccin Mocha color scheme, dual CPU/Memory sparkline graphs, inline CPU gauge bars, auto-streaming logs with colored stderr/stdout tags, filter mode (`/`), sort by column (`Tab`), detail panel (`Enter`), signal picker (`k`), help popup (`?`), toast crash notifications, vim navigation (`j`/`k`)
+- Telegram crash notifications — daemon fork+exec sends alerts to Telegram on process crash with last log lines
+- `velos config set/get` command for global daemon settings (`~/.velos/config.toml`)
+- `signal()` method in VelosClient for sending arbitrary signals to processes
+
+### Fixed
+- Use-after-free in argv when applying env vars before exec (interpreter string freed by defer inside if block before fork)
+
 ## [0.1.8] - 2026-03-05
 
 ### Added
