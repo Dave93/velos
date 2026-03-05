@@ -49,7 +49,7 @@
 
 - [x] `cargo install velos` — публикация на crates.io
 - [x] Homebrew formula (homebrew-tap)
-- [x] Install script: `curl -fsSL https://velos.dev/install.sh | sh`
+- [x] Install script: `curl -fsSL https://releases.velospm.dev/install.sh | sh`
 - [x] AUR package (PKGBUILD)
 
 ## 7.6 Shell Completions

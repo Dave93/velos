@@ -3,8 +3,8 @@
 # https://github.com/Dave93/velos
 #
 # Usage:
-#   curl -fsSL https://releases.velos.dev/install.sh | bash
-#   curl -fsSL https://releases.velos.dev/install.sh | bash -s v0.1.1
+#   curl -fsSL https://releases.velospm.dev/install.sh | bash
+#   curl -fsSL https://releases.velospm.dev/install.sh | bash -s v0.1.1
 #
 # Environment variables:
 #   VELOS_INSTALL     — install directory (default: $HOME/.velos)
@@ -116,7 +116,7 @@ GITHUB_REPO="Dave93/velos"
 ARCHIVE_NAME="velos-${TARGET}.tar.gz"
 
 get_download_urls() {
-    CDN_URL="${VELOS_CDN_URL:-}"
+    CDN_URL="${VELOS_CDN_URL:-https://releases.velospm.dev}"
     GITHUB_URL="https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}"
 
     if [ -n "$CDN_URL" ]; then

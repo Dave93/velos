@@ -1,9 +1,9 @@
 #!/bin/sh
 # Add Velos APT repository (Debian/Ubuntu)
-# Usage: curl -fsSL https://releases.velos.dev/setup-apt.sh | sudo bash
+# Usage: curl -fsSL https://releases.velospm.dev/setup-apt.sh | sudo bash
 set -e
 
-REPO_URL="${VELOS_REPO_URL:-https://releases.velos.dev}"
+REPO_URL="${VELOS_REPO_URL:-https://releases.velospm.dev}"
 
 echo "Adding Velos APT repository..."
 

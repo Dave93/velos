@@ -35,16 +35,16 @@
 
 ```bash
 # One-line installer (macOS / Linux)
-curl -fsSL https://raw.githubusercontent.com/Dave93/velos/main/distribution/install.sh | bash
+curl -fsSL https://releases.velospm.dev/install.sh | bash
 
 # macOS (Homebrew)
 brew install Dave93/tap/velos
 
 # Debian / Ubuntu
-curl -fsSL https://releases.velos.dev/setup-apt.sh | sudo bash
+curl -fsSL https://releases.velospm.dev/setup-apt.sh | sudo bash
 
 # RHEL / Fedora / CentOS
-curl -fsSL https://releases.velos.dev/setup-yum.sh | sudo bash
+curl -fsSL https://releases.velospm.dev/setup-yum.sh | sudo bash
 
 # From source (requires Zig 0.15+ and Rust 1.75+)
 git clone https://github.com/Dave93/velos.git
