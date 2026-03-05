@@ -25,9 +25,9 @@ struct JsonRpcResponse {
 }
 
 #[derive(Debug, Serialize)]
-struct JsonRpcError {
-    code: i32,
-    message: String,
+pub struct JsonRpcError {
+    pub code: i32,
+    pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<Value>,
 }
@@ -108,7 +108,7 @@ impl McpServer {
         Ok(())
     }
 
-    async fn handle_method(
+    pub async fn handle_method(
         &self,
         method: &str,
         params: Option<Value>,

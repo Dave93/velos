@@ -225,8 +225,19 @@ enum Commands {
     Unstartup,
     /// TUI monitoring dashboard
     Monit,
-    /// Start MCP server (stdio transport for AI agents)
-    McpServer,
+    /// Start MCP server for AI agents (stdio or HTTP transport)
+    ///
+    /// Without --port: stdio transport (for local AI clients like Claude Code)
+    /// With --port: Streamable HTTP transport (for remote access from any MCP client)
+    ///
+    /// Examples:
+    ///   velos mcp-server              # stdio (local)
+    ///   velos mcp-server --port 8080  # HTTP (remote, accessible at http://host:8080/mcp)
+    McpServer {
+        /// Start HTTP transport on this port instead of stdio
+        #[arg(short, long)]
+        port: Option<u16>,
+    },
     /// Ping the daemon (IPC)
     Ping,
     /// Ping the Zig core (FFI, for testing)
@@ -321,12 +332,18 @@ async fn main() {
         Commands::Startup => commands::startup::run_startup().await,
         Commands::Unstartup => commands::startup::run_unstartup().await,
         Commands::Monit => commands::monit::run().await,
-        Commands::McpServer => {
-            let server = velos_mcp::server::McpServer::new();
-            server
-                .run()
-                .await
-                .map_err(|e| velos_core::VelosError::ProtocolError(e.to_string()))
+        Commands::McpServer { port } => {
+            if let Some(port) = port {
+                velos_mcp::http::run_http(port)
+                    .await
+                    .map_err(|e| velos_core::VelosError::ProtocolError(e.to_string()))
+            } else {
+                let server = velos_mcp::server::McpServer::new();
+                server
+                    .run()
+                    .await
+                    .map_err(|e| velos_core::VelosError::ProtocolError(e.to_string()))
+            }
         }
         Commands::Ping => commands::ping::run().await,
         Commands::PingFfi => {

@@ -107,8 +107,13 @@ velos logs api --level error --grep "timeout" --dedupe
 ```
 
 ### MCP Server (AI Agent Integration)
-Built-in [Model Context Protocol](https://modelcontextprotocol.io/) server with 13 tools for AI agents.
+Built-in [Model Context Protocol](https://modelcontextprotocol.io/) server with 13 tools for AI agents. Supports **stdio** (local) and **Streamable HTTP** (remote) transports.
 
+#### Local (stdio) — AI client and Velos on the same machine
+
+Add to your AI client config:
+
+**Claude Code** (`.mcp.json` in project root):
 ```json
 {
   "mcpServers": {
@@ -116,6 +121,47 @@ Built-in [Model Context Protocol](https://modelcontextprotocol.io/) server with 
   }
 }
 ```
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "velos": { "command": "/Users/you/.velos/bin/velos", "args": ["mcp-server"] }
+  }
+}
+```
+
+**Cursor** (`.cursor/mcp.json`):
+```json
+{
+  "mcpServers": {
+    "velos": { "command": "velos", "args": ["mcp-server"] }
+  }
+}
+```
+
+#### Remote (HTTP) — Velos on VPS, AI client on your laptop
+
+Start MCP server on your VPS:
+```bash
+velos mcp-server --port 8080
+```
+
+Then configure your AI client with the URL:
+```json
+{
+  "mcpServers": {
+    "velos": { "type": "url", "url": "http://your-vps:8080/mcp" }
+  }
+}
+```
+
+> **Tip:** For production, use HTTPS via a reverse proxy (nginx/caddy) or SSH tunnel:
+> ```bash
+> ssh -L 8080:localhost:8080 user@your-vps
+> ```
+
+#### Available Tools
 
 | Tool | Description |
 |------|-------------|
@@ -166,7 +212,7 @@ All commands support `--json` for machine-readable output.
 | `velos monit` | TUI monitoring dashboard |
 | `velos metrics` | Start Prometheus exporter |
 | `velos api` | Start REST API + WebSocket server |
-| `velos mcp-server` | Start MCP server (stdio) |
+| `velos mcp-server` | Start MCP server (stdio or `--port` for HTTP) |
 | `velos startup` | Generate init system script |
 | `velos unstartup` | Remove init system script |
 | `velos completions <shell>` | Generate shell completions |
