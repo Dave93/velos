@@ -165,10 +165,11 @@ pub const Supervisor = struct {
         var argv_list: std.ArrayList(?[*:0]const u8) = .{};
         defer argv_list.deinit(self.allocator);
 
+        var interp_z: ?[:0]u8 = null;
+        defer if (interp_z) |iz| self.allocator.free(iz);
         if (config.interpreter) |interp| {
-            const interp_z = try self.allocator.dupeZ(u8, interp);
-            defer self.allocator.free(interp_z);
-            try argv_list.append(self.allocator, interp_z);
+            interp_z = try self.allocator.dupeZ(u8, interp);
+            try argv_list.append(self.allocator, interp_z.?);
         } else {
             // Auto-detect: check shebang first, then extension
             const detected = self.detectInterpreter(config.script, config.cwd);
@@ -468,10 +469,11 @@ pub const Supervisor = struct {
         var argv_list: std.ArrayList(?[*:0]const u8) = .{};
         defer argv_list.deinit(self.allocator);
 
+        var interp_z2: ?[:0]u8 = null;
+        defer if (interp_z2) |iz| self.allocator.free(iz);
         if (proc.config.interpreter) |interp| {
-            const interp_z = try self.allocator.dupeZ(u8, interp);
-            defer self.allocator.free(interp_z);
-            try argv_list.append(self.allocator, interp_z);
+            interp_z2 = try self.allocator.dupeZ(u8, interp);
+            try argv_list.append(self.allocator, interp_z2.?);
         } else {
             const detected = self.detectInterpreter(proc.config.script, proc.config.cwd);
             if (detected) |interp| {
@@ -1072,11 +1074,13 @@ fn setIpcEnv(child_fd: posix.fd_t) void {
 /// Called in child process only — uses stack buffers since we're about to exec.
 fn applyEnvVars(env_vars: ?[]const u8) void {
     const env_str = env_vars orelse return;
+    // Safe to cast to mutable: called only in child process after fork, before exec.
+    const mutable: []u8 = @constCast(env_str);
     var start: usize = 0;
     var i: usize = 0;
-    while (i <= env_str.len) : (i += 1) {
-        if (i == env_str.len or env_str[i] == '\n') {
-            const entry = env_str[start..i];
+    while (i <= mutable.len) : (i += 1) {
+        if (i == mutable.len or mutable[i] == '\n') {
+            const entry = mutable[start..i];
             if (entry.len > 0) {
                 applyOneEnvVar(entry);
             }
@@ -1085,7 +1089,7 @@ fn applyEnvVars(env_vars: ?[]const u8) void {
     }
 }
 
-fn applyOneEnvVar(entry: []const u8) void {
+fn applyOneEnvVar(entry: []u8) void {
     // Find '=' separator
     var eq_pos: ?usize = null;
     for (entry, 0..) |c, idx| {
@@ -1095,17 +1099,26 @@ fn applyOneEnvVar(entry: []const u8) void {
         }
     }
     const ep = eq_pos orelse return;
-    const key = entry[0..ep];
-    const val = entry[ep + 1 ..];
-    if (key.len == 0 or key.len >= 255 or val.len >= 4095) return;
-
-    var key_buf: [256]u8 = undefined;
-    var val_buf: [4096]u8 = undefined;
-    @memcpy(key_buf[0..key.len], key);
-    key_buf[key.len] = 0;
-    @memcpy(val_buf[0..val.len], val);
-    val_buf[val.len] = 0;
-    _ = setenv(@ptrCast(key_buf[0..key.len :0]), @ptrCast(val_buf[0..val.len :0]), 1);
+    if (ep == 0) return;
+    // Temporarily null-terminate key and value in-place (safe: child process, about to exec)
+    const key_end = ep;
+    const val_start = ep + 1;
+    entry[key_end] = 0; // replace '=' with null
+    const key_ptr: [*:0]const u8 = @ptrCast(entry[0..key_end :0]);
+    // Need null-terminated value — if entry ends at slice boundary, we can't write past it.
+    // Use putenv-style: restore '=' and use setenv with a stack copy for value only.
+    entry[key_end] = '='; // restore
+    // For value, use setenv with a stack buffer if small, or skip if too large
+    const val = entry[val_start..];
+    if (val.len < 32768) {
+        var val_buf: [32768]u8 = undefined;
+        @memcpy(val_buf[0..val.len], val);
+        val_buf[val.len] = 0;
+        // Null-terminate key again
+        entry[key_end] = 0;
+        _ = setenv(key_ptr, @ptrCast(val_buf[0..val.len :0]), 1);
+        entry[key_end] = '=';
+    }
 }
 
 const ProcessUsage = struct {
