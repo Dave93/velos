@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-03-06
+
+### Added
+- AI crash analysis and auto-fix agent (`velos-ai` crate) — autonomous coding agent with 9 tools (read/edit/create/delete files, grep, glob, list_dir, run_command, git_diff)
+- Support for Anthropic (Claude) and OpenAI-compatible AI providers
+- CLI commands: `velos ai fix`, `velos ai analyze`, `velos ai list`, `velos ai ignore`
+- Telegram inline buttons (Fix / Ignore) for crash notifications with callback polling
+- Auto-restart process after successful AI fix
+- Per-crash agent logs at `~/.velos/crashes/<id>.log`
+- i18n support (EN/RU) for all AI-related messages
+- Path sandboxing for AI agent tools (restricted to project directory)
+
 ## [0.1.9] - 2026-03-05
 
 ### Added
