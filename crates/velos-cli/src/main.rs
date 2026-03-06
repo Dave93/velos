@@ -30,7 +30,10 @@ fn version_string() -> &'static str {
   velos scale app 8           Scale to 8 instances
   velos save                  Save process list
   velos resurrect             Restore saved processes
-  velos monit                 TUI monitoring dashboard"
+  velos monit                 TUI monitoring dashboard
+  velos ai list               List crash records
+  velos ai fix <crash-id>     Auto-fix a crash with AI
+  velos ai analyze <crash-id> Re-analyze a crash"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -258,6 +261,11 @@ enum Commands {
         /// Shell to generate completions for (bash, zsh, fish, elvish, powershell)
         shell: String,
     },
+    /// AI crash analysis and auto-fix
+    Ai {
+        #[command(subcommand)]
+        action: AiAction,
+    },
     /// Internal: send crash notification (called by daemon)
     #[command(hide = true)]
     NotifyCrash {
@@ -265,6 +273,34 @@ enum Commands {
         name: String,
         /// Exit code
         exit_code: i32,
+    },
+    /// Internal: run Telegram callback poller (called by daemon)
+    #[command(hide = true)]
+    TelegramPoller,
+}
+
+#[derive(Subcommand)]
+enum AiAction {
+    /// Auto-fix a crash using AI agent
+    Fix {
+        /// Crash record ID
+        crash_id: String,
+    },
+    /// Re-analyze a crash with AI
+    Analyze {
+        /// Crash record ID
+        crash_id: String,
+    },
+    /// List crash records
+    List {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Mark a crash as ignored
+    Ignore {
+        /// Crash record ID
+        crash_id: String,
     },
 }
 
@@ -395,8 +431,17 @@ async fn main() {
             ConfigAction::Set { key, value } => commands::config::run_set(key, value).await,
             ConfigAction::Get { key } => commands::config::run_get(key).await,
         },
+        Commands::Ai { action } => match action {
+            AiAction::Fix { crash_id } => commands::ai::run_fix(crash_id).await,
+            AiAction::Analyze { crash_id } => commands::ai::run_analyze(crash_id).await,
+            AiAction::List { json } => commands::ai::run_list(json).await,
+            AiAction::Ignore { crash_id } => commands::ai::run_ignore(crash_id).await,
+        },
         Commands::NotifyCrash { name, exit_code } => {
             commands::notify_crash::run(name, exit_code).await
+        }
+        Commands::TelegramPoller => {
+            commands::telegram_poller::run_poller()
         }
         Commands::Completions { shell } => commands::completions::run(shell),
     };

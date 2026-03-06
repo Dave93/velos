@@ -22,6 +22,7 @@ velos-log-engine = { path = "../velos-log-engine" }
 velos-metrics = { path = "../velos-metrics" }
 velos-api = { path = "../velos-api" }
 velos-mcp = { path = "../velos-mcp" }
+velos-ai = { path = "../velos-ai" }
 regex = "1"
 ratatui = "0.29"
 crossterm = "0.28"
@@ -29,3 +30,4 @@ dirs = "5"
 ureq = { version = "3", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
+uuid = { version = "1", features = ["v4"] }

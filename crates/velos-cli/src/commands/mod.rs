@@ -3,7 +3,9 @@
 // m = memory (bytes), u = uptime (ms), r = restarts
 // c = cpu (percent), t = timestamp (ms), l = level
 
+pub mod ai;
 pub mod api;
+pub mod telegram_poller;
 pub mod completions;
 pub mod config;
 pub mod daemon;

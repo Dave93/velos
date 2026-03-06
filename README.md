@@ -21,6 +21,7 @@
 | Daemon memory | ~2 MB | ~60 MB | ~30 MB |
 | MCP server (AI agents) | Built-in (13 tools) | - | - |
 | Smart log analysis | Algorithmic (zero LLM cost) | - | - |
+| AI crash analysis + auto-fix | Built-in (Anthropic/OpenAI) | - | - |
 | Cluster mode | `velos start -i max` | `pm2 start -i max` | - |
 | Prometheus metrics | Built-in | pm2-prometheus-exporter | - |
 | REST API + WebSocket | Built-in | pm2-api | - |
@@ -261,6 +262,36 @@ velos list --ai
 
 Supported commands: `velos list --ai`, `velos info <name> --ai`, `velos logs <name> --ai`
 
+### AI Crash Analysis & Auto-Fix
+When a process crashes, Velos can analyze the error with AI and auto-fix the bug. Supports **Anthropic** (Claude) and **OpenAI-compatible** providers (OpenAI, OpenRouter, Groq, Ollama, xAI).
+
+```bash
+# Configure AI provider
+velos config set ai.provider anthropic
+velos config set ai.api_key sk-ant-...
+velos config set ai.model claude-sonnet-4-20250514
+
+# Optional: enable auto-analysis on crash
+velos config set ai.auto_analyze true
+
+# Configure Telegram for crash notifications
+velos config set telegram.bot_token 123456:ABC...
+velos config set telegram.chat_id -100123456789
+velos config set notifications.language ru    # en or ru
+```
+
+On crash: logs are collected, stack traces parsed, source code extracted, AI analysis runs, and a Telegram notification is sent with **Fix** / **Ignore** inline buttons.
+
+```bash
+# Manual commands
+velos ai list                    # list crash records
+velos ai analyze <crash-id>     # re-analyze a crash
+velos ai fix <crash-id>         # run AI agent to auto-fix
+velos ai ignore <crash-id>      # mark as ignored
+```
+
+The AI fix agent has 9 tools: read/edit/create/delete files, grep, glob, list directories, run commands, and git diff — all sandboxed to the project directory.
+
 ### Monitoring & Metrics
 - **TUI dashboard** (`velos monit`) — real-time process table, memory sparkline, live logs
 - **Prometheus endpoint** (`velos metrics -p 9615`) — scrape at `/metrics`
@@ -295,6 +326,12 @@ All commands support `--json` for machine-readable output.
 | `velos startup` | Generate init system script |
 | `velos unstartup` | Remove init system script |
 | `velos completions <shell>` | Generate shell completions |
+| `velos config set <key> <val>` | Set global config value |
+| `velos config get [key]` | Show config value(s) |
+| `velos ai list` | List crash records |
+| `velos ai fix <id>` | Auto-fix crash with AI agent |
+| `velos ai analyze <id>` | Re-analyze crash with AI |
+| `velos ai ignore <id>` | Mark crash as ignored |
 | `velos ping` | Check daemon connectivity |
 
 ### Key Flags
@@ -395,6 +432,7 @@ Full example: [`config/velos.example.toml`](config/velos.example.toml)
 | `velos-mcp` | MCP Server (stdio, JSON-RPC, 13 tools) |
 | `velos-metrics` | Prometheus exporter, OpenTelemetry |
 | `velos-api` | REST API + WebSocket (axum) |
+| `velos-ai` | AI crash analysis, agent with tools, multi-provider |
 | `velos-cli` | CLI binary (clap, ratatui TUI) |
 
 **IPC protocol**: binary, 7-byte header (magic `0xVE10` + version + length LE u32) + MessagePack payload. Unix socket at `~/.velos/velos.sock`.

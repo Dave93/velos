@@ -9,6 +9,7 @@ members = [
     "crates/velos-mcp",
     "crates/velos-metrics",
     "crates/velos-api",
+    "crates/velos-ai",
 ]
 resolver = "2"
 

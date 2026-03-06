@@ -1,0 +1,16 @@
+[package]
+name = "velos-ai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ureq = { version = "3", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+regex = "1"
+walkdir = "2"
+glob = "0.3"
+wait-timeout = "0.2"
+dirs = "5"
