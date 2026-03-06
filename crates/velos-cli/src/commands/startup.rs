@@ -146,27 +146,44 @@ pub async fn run_startup() -> Result<(), VelosError> {
         "launchd" => {
             let plist = generate_launchd_plist(&velos_bin);
             let path = launchd_plist_path();
+            let uid = unsafe { libc::getuid() };
+            let domain_target = format!("gui/{uid}");
+            let service_target = format!("gui/{uid}/com.velos.daemon");
 
-            // Unload first if already loaded (avoids "service already loaded" error)
+            // Bootout first if already loaded (avoids "service already loaded" error)
             std::process::Command::new("launchctl")
-                .args(["unload", &path.to_string_lossy()])
+                .args(["bootout", &service_target])
+                .output()
+                .ok();
+
+            // Re-enable in case it was previously disabled
+            std::process::Command::new("launchctl")
+                .args(["enable", &service_target])
                 .output()
                 .ok();
 
             std::fs::write(&path, plist)?;
             println!("[velos] Launchd plist written to {}", path.display());
 
-            // Auto-load and start
+            // Bootstrap (modern replacement for `launchctl load`)
             let status = std::process::Command::new("launchctl")
-                .args(["load", &path.to_string_lossy()])
+                .args(["bootstrap", &domain_target, &path.to_string_lossy()])
                 .status();
 
             if status.map(|s| s.success()).unwrap_or(false) {
                 println!("[velos] Daemon loaded and started via launchd");
             } else {
-                println!();
-                println!("  Load and start manually:");
-                println!("    launchctl load {}", path.display());
+                // Fallback to legacy load for older macOS
+                let legacy = std::process::Command::new("launchctl")
+                    .args(["load", &path.to_string_lossy()])
+                    .status();
+                if legacy.map(|s| s.success()).unwrap_or(false) {
+                    println!("[velos] Daemon loaded and started via launchd (legacy)");
+                } else {
+                    println!();
+                    println!("  Load and start manually:");
+                    println!("    launchctl bootstrap {} {}", domain_target, path.display());
+                }
             }
             println!();
             println!("  Check status:");
@@ -260,16 +277,21 @@ pub async fn run_unstartup() -> Result<(), VelosError> {
         "launchd" => {
             let path = launchd_plist_path();
             if path.exists() {
-                println!("  Unloading service first:");
-                println!("    launchctl unload {}", path.display());
-                // Try to unload before removing
-                std::process::Command::new("launchctl")
+                let uid = unsafe { libc::getuid() };
+                let service_target = format!("gui/{uid}/com.velos.daemon");
+
+                // Bootout (modern replacement for `launchctl unload`)
+                let _ = std::process::Command::new("launchctl")
+                    .args(["bootout", &service_target])
+                    .output();
+                // Fallback legacy unload
+                let _ = std::process::Command::new("launchctl")
                     .args(["unload", &path.to_string_lossy()])
-                    .output()
-                    .ok();
+                    .output();
+
                 std::fs::remove_file(&path)?;
                 removed = true;
-                println!("[velos] Removed {}", path.display());
+                println!("[velos] Stopped and removed {}", path.display());
             }
         }
         "openrc" => {

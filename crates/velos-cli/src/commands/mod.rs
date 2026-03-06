@@ -30,9 +30,58 @@ pub mod stop;
 use velos_client::VelosClient;
 use velos_core::VelosError;
 
-/// Helper: connect to the daemon, printing a helpful message if not running.
+/// Helper: connect to the daemon, auto-starting it if not running.
 pub async fn connect() -> Result<VelosClient, VelosError> {
-    VelosClient::connect().await
+    match VelosClient::connect().await {
+        Ok(client) => Ok(client),
+        Err(_) if !velos_client::is_daemon_running() => {
+            // Auto-start daemon in background
+            ensure_daemon_running()?;
+            // Wait for socket to appear (up to 5s)
+            let socket = velos_client::default_socket_path();
+            for _ in 0..50 {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                if socket.exists() {
+                    if let Ok(client) = VelosClient::connect().await {
+                        return Ok(client);
+                    }
+                }
+            }
+            Err(VelosError::ProtocolError(
+                "Daemon started but could not connect. Check: velos daemon".into(),
+            ))
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// Spawn daemon as a background process if it's not already running.
+fn ensure_daemon_running() -> Result<(), VelosError> {
+    let exe = std::env::current_exe()
+        .map_err(|e| VelosError::Io(e))?;
+
+    eprintln!("[velos] Daemon not running — starting automatically...");
+
+    let log_dir = dirs::home_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join(".velos")
+        .join("logs");
+    let _ = std::fs::create_dir_all(&log_dir);
+
+    let stdout_log = std::fs::File::create(log_dir.join("daemon-stdout.log"))
+        .map_err(VelosError::Io)?;
+    let stderr_log = std::fs::File::create(log_dir.join("daemon-stderr.log"))
+        .map_err(VelosError::Io)?;
+
+    std::process::Command::new(&exe)
+        .arg("daemon")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::from(stdout_log))
+        .stderr(std::process::Stdio::from(stderr_log))
+        .spawn()
+        .map_err(|e| VelosError::Io(e))?;
+
+    Ok(())
 }
 
 /// Resolve a name-or-ID string to a numeric process ID.
