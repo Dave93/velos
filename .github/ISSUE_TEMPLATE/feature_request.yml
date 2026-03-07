@@ -1,0 +1,61 @@
+name: Feature Request
+description: Suggest a new feature for Velos
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature. Please describe your idea below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this feature solve? What is the use case?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this feature work?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative approaches you have considered
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of Velos does this relate to?
+      options:
+        - CLI
+        - Daemon (Zig core)
+        - MCP Server
+        - Smart Log Engine
+        - AI Crash Analysis
+        - TUI Dashboard (monit)
+        - REST API / WebSocket
+        - Metrics (Prometheus/OTEL)
+        - Configuration
+        - Installer / Packaging
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or references
+    validations:
+      required: false

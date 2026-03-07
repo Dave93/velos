@@ -1,8 +1,29 @@
+# Build artifacts
 zig-out/
 .zig-cache/
 target/
 *.a
 *.o
-.velos/
 *.dylib
 *.so
+
+# Runtime
+.velos/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.*
+
+# Claude Code local settings
+.claude/settings.local.json

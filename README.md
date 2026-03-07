@@ -15,20 +15,23 @@
 
 ## Why Velos?
 
-| Feature | Velos | PM2 | Supervisor |
-|---------|-------|-----|------------|
-| Language | Zig + Rust | Node.js | Python |
-| Daemon memory | ~2 MB | ~60 MB | ~30 MB |
-| MCP server (AI agents) | Built-in (13 tools) | - | - |
-| Smart log analysis | Algorithmic (zero LLM cost) | - | - |
-| AI crash analysis + auto-fix | Built-in (Anthropic/OpenAI) | - | - |
-| Cluster mode | `velos start -i max` | `pm2 start -i max` | - |
-| Prometheus metrics | Built-in | pm2-prometheus-exporter | - |
-| REST API + WebSocket | Built-in | pm2-api | - |
-| TUI dashboard | `velos monit` | `pm2 monit` | - |
-| Config format | TOML | JSON/JS/YAML | INI |
-| Watch mode | kqueue/inotify | chokidar (Node.js) | - |
-| Shell completions | bash, zsh, fish | - | - |
+Process managers like PM2 and Supervisor were built before the AI era. Velos is designed from the ground up for a world where AI agents manage your infrastructure: a native MCP server lets Claude, Codex, or Gemini start, stop, and debug your processes directly. When something breaks, Velos detects the error in real time, analyzes it with AI, and can auto-fix the bug — all without you opening a terminal.
+
+Under the hood, a Zig core keeps the daemon at **~3 MB RAM** idle, growing just ~65 KB per managed process (vs PM2's ~60 MB baseline from the Node.js/V8 runtime). A Rust shell provides a modern CLI, smart log analysis, and observability stack — all in a single binary with zero runtime dependencies.
+
+| | Velos | PM2 | Supervisor |
+|---|---|---|---|
+| **Daemon memory** | ~3 MB | ~60 MB | ~30 MB |
+| **MCP server for AI agents** | Built-in (13 tools) | - | - |
+| **AI crash analysis + auto-fix** | Built-in | - | - |
+| **Runtime error detection** | Sentry-like | - | - |
+| **Crash alerts (Telegram)** | Built-in | - | - |
+| **Smart log analysis** | Algorithmic (zero LLM cost) | - | - |
+| **Prometheus + OpenTelemetry** | Built-in | plugin | - |
+| **REST API + WebSocket** | Built-in | plugin | - |
+| **Cluster mode** | Yes | Yes | - |
+| **TUI dashboard** | Yes | Yes | - |
+| **Watch mode** | kqueue/inotify | chokidar | - |
 
 ## Quick Start
 
@@ -56,16 +59,15 @@ make build
 ### Usage
 
 ```bash
-# Terminal 1: start the daemon
-velos daemon
-
-# Terminal 2: manage processes
+# Start managing processes (daemon starts automatically)
 velos start server.js --name api
 velos start worker.py --name bg -i 4     # cluster mode: 4 instances
 velos list                                # show all processes
 velos logs api --summary                  # smart log summary
 velos monit                               # TUI dashboard
 ```
+
+> **Note:** The daemon starts automatically on your first CLI command. No need to run `velos daemon` manually.
 
 ### Shell Completions
 
@@ -92,6 +94,15 @@ velos completions fish > ~/.config/fish/completions/velos.fish
 - **Ready signal** — process reports readiness via IPC (`--wait-ready`)
 - **Graceful shutdown** — JSON message via IPC instead of SIGTERM (`--shutdown-with-message`)
 - **State persistence** — save/resurrect process list across daemon restarts
+- **Auto-daemon** — daemon starts automatically on first CLI command, no manual setup required
+
+### Runtime Error Detection (Sentry-like)
+Velos monitors stderr of running processes for error patterns (Traceback, TypeError, panic, FATAL, segmentation fault, etc.) and sends notifications **without requiring a process crash** — similar to how Sentry detects runtime errors.
+
+- Configurable via Telegram notifications
+- Per-process 60-second cooldown to prevent notification spam
+- Suppressed after AI auto-fix restart (no duplicate alerts)
+- Works independently of crash detection
 
 ### Smart Log Engine (Zero LLM Cost)
 All "smart" features are algorithmic — regex, statistics, heuristics. No LLM API calls.
@@ -280,7 +291,7 @@ velos config set telegram.chat_id -100123456789
 velos config set notifications.language ru    # en or ru
 ```
 
-On crash: logs are collected, stack traces parsed, source code extracted, AI analysis runs, and a Telegram notification is sent with **Fix** / **Ignore** inline buttons.
+On crash or runtime error: logs are collected, stack traces parsed, source code extracted, AI analysis runs, and a Telegram notification is sent with **Fix** / **Ignore** inline buttons. After a successful AI fix, the process is automatically restarted and notifications are suppressed to prevent duplicate alerts.
 
 ```bash
 # Manual commands
@@ -291,6 +302,8 @@ velos ai ignore <crash-id>      # mark as ignored
 ```
 
 The AI fix agent has 9 tools: read/edit/create/delete files, grep, glob, list directories, run commands, and git diff — all sandboxed to the project directory.
+
+Supported AI providers: **Anthropic** (Claude), **OpenAI**, **OpenRouter**, **Groq**, **Ollama**, **xAI** — any OpenAI-compatible API.
 
 ### Monitoring & Metrics
 - **TUI dashboard** (`velos monit`) — real-time process table, memory sparkline, live logs
@@ -322,9 +335,9 @@ All commands support `--json` for machine-readable output.
 | `velos monit` | TUI monitoring dashboard |
 | `velos metrics` | Start Prometheus exporter |
 | `velos api` | Start REST API + WebSocket server |
-| `velos mcp-server` | Start MCP server (stdio or `--port` for HTTP) |
-| `velos startup` | Generate init system script |
-| `velos unstartup` | Remove init system script |
+| `velos mcp-server` | Start MCP server (stdio or `--port` for Streamable HTTP) |
+| `velos startup` | Auto-start daemon on boot (launchd/systemd) |
+| `velos unstartup` | Remove auto-start configuration |
 | `velos completions <shell>` | Generate shell completions |
 | `velos config set <key> <val>` | Set global config value |
 | `velos config get [key]` | Show config value(s) |
@@ -416,9 +429,9 @@ Full example: [`config/velos.example.toml`](config/velos.example.toml)
                                      └──────────────────────┘
 ```
 
-**Zig core** (`zig/src/`): daemon, fork/exec, IPC server, event loop (kqueue/epoll), CPU/RAM monitoring via syscalls, log collector, ring buffer, file watcher, cron parser, IPC channel (socketpair).
+**Zig core** (`zig/src/`): daemon, fork/exec, IPC server, event loop (kqueue/epoll), CPU/RAM monitoring via syscalls, log collector with error pattern detection, ring buffer, file watcher, cron parser, IPC channel (socketpair).
 
-**Rust shell** (`crates/`): CLI (clap), IPC client, TOML config, Smart Log Engine, MCP Server (JSON-RPC stdio), Prometheus/OpenTelemetry, REST API (axum), TUI (ratatui).
+**Rust shell** (`crates/`): CLI (clap) with 27+ commands, IPC client, TOML config, Smart Log Engine, MCP Server (JSON-RPC stdio + Streamable HTTP), Prometheus/OpenTelemetry, REST API (axum), TUI (ratatui), AI crash analysis agent.
 
 **Bridge**: Zig compiles to `libvelos_core.a` (static library, C ABI) -> Rust links via FFI.
 
@@ -447,7 +460,11 @@ Full architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 ~/.velos/
 ├── velos.sock          # IPC Unix socket
 ├── velos.pid           # Daemon PID file
+├── config.toml         # Global config (velos config set/get)
 ├── state.bin           # Saved process state (velos save / auto-save)
+├── crashes/            # AI crash records and agent logs
+│   ├── <id>.json       # Crash context + analysis
+│   └── <id>.log        # AI agent execution log
 └── logs/               # Process log files
     ├── api-out.log     # stdout
     └── api-err.log     # stderr
@@ -482,7 +499,7 @@ cd zig && zig build test
 # Rust unit tests
 cargo test --workspace
 
-# Integration tests (35 tests, full lifecycle)
+# Integration tests (49 tests, full lifecycle)
 bash tests/integration_lifecycle.sh
 ```
 
@@ -493,22 +510,23 @@ bash tests/integration_lifecycle.sh
 | Document | Description |
 |----------|-------------|
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
-| [docs/CONCEPT.md](docs/CONCEPT.md) | Vision, features, competitor comparison |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and contribution guide |
+| [SECURITY.md](SECURITY.md) | Security policy and vulnerability reporting |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Full architecture (1200+ lines) |
 | [docs/mcp-tools.md](docs/mcp-tools.md) | MCP Server tool reference (13 tools) |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Development phases and goals |
 
 ---
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/my-feature`)
-3. Build and test (`make dev && cargo test --workspace && bash tests/integration_lifecycle.sh`)
-4. Commit your changes
-5. Open a Pull Request
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, and PR guidelines.
 
-Please read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) before contributing to understand the Zig+Rust hybrid architecture.
+Before contributing, please read:
+- [CONTRIBUTING.md](CONTRIBUTING.md) — development setup and workflow
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — community standards
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Zig+Rust hybrid architecture
+
+For security vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ---
 
