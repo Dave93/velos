@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2026-03-07
+
+### Added
+- Sentry-like runtime error detection — monitor stderr for error patterns (Traceback, TypeError, panic, FATAL, etc.) and send Telegram notifications without requiring process crash
+- Suppress crash/error notifications after AI fix restart (marker file mechanism)
+
+### Fixed
+- Prevent notification spam on autorestart loops — 60s cooldown per process for crash notifications
+- Skip error notification if process already crashed (avoid duplicate alerts)
+- Non-blocking fix execution in Telegram poller (thread-based, no longer blocks callback processing)
+
 ## [0.1.11] - 2026-03-06
 
 ### Added
