@@ -490,12 +490,16 @@ pub const Supervisor = struct {
         const pid = std.c.fork();
         if (pid == 0) {
             // Child: exec the notify binary, detached
-            // Close stdin, redirect stdout/stderr to /dev/null
+            // Close stdin, redirect stdout to /dev/null, stderr to log file
             const devnull = posix.open("/dev/null", .{ .ACCMODE = .WRONLY }, 0) catch {
                 posix.exit(1);
             };
             posix.dup2(devnull, posix.STDOUT_FILENO) catch {};
-            posix.dup2(devnull, posix.STDERR_FILENO) catch {};
+
+            // Try to open log file for stderr, fallback to /dev/null
+            const log_fd = posix.open("/tmp/velos-notify-crash.log", .{ .ACCMODE = .WRONLY, .CREAT = true, .APPEND = true }, 0o644) catch devnull;
+            posix.dup2(log_fd, posix.STDERR_FILENO) catch {};
+            if (log_fd != devnull) posix.close(log_fd);
             posix.close(devnull);
 
             _ = @errorName(posix.execvpeZ(argv[0].?, @ptrCast(&argv), std.c.environ));

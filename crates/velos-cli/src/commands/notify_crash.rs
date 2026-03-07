@@ -52,7 +52,7 @@ pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError>
     };
 
     // Run AI analysis if configured
-    let ai_analysis = run_ai_analysis(&config.ai, &ctx);
+    let (ai_analysis, ai_configured) = run_ai_analysis(&config.ai, &ctx);
 
     // Create and save crash record
     let crash_id = uuid::Uuid::new_v4().to_string();
@@ -77,7 +77,7 @@ pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError>
     let telegram = config.notifications.and_then(|n| n.telegram);
     if let Some(t) = telegram {
         if !t.bot_token.is_empty() && !t.chat_id.is_empty() {
-            let text = build_telegram_message(&i18n, &process_name, exit_code, &hostname, &timestamp, &log_lines, &ai_analysis);
+            let text = build_telegram_message(&i18n, &process_name, exit_code, &hostname, &timestamp, &log_lines, &ai_analysis, ai_configured);
             if let Err(e) = send_telegram_with_buttons(&t.bot_token, &t.chat_id, &text, &crash_id, &i18n) {
                 eprintln!("[velos] Telegram send error: {e}");
             }
@@ -87,13 +87,18 @@ pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError>
     Ok(())
 }
 
+/// Returns (analysis_result, is_ai_configured).
 fn run_ai_analysis(
     ai_config: &Option<super::config::AiConfigToml>,
     ctx: &CrashContext,
-) -> Option<String> {
-    let ai = ai_config.as_ref()?;
-    if !ai.auto_analyze || ai.provider.is_empty() || ai.api_key.is_empty() {
-        return None;
+) -> (Option<String>, bool) {
+    let ai = match ai_config.as_ref() {
+        Some(ai) if !ai.provider.is_empty() && !ai.api_key.is_empty() => ai,
+        _ => return (None, false),
+    };
+
+    if !ai.auto_analyze {
+        return (None, true);
     }
 
     let config = AiConfig {
@@ -110,15 +115,15 @@ fn run_ai_analysis(
         Ok(p) => p,
         Err(e) => {
             eprintln!("[velos] AI provider error: {e}");
-            return None;
+            return (None, true);
         }
     };
 
     match analyzer::analyze(provider.as_ref(), ctx) {
-        Ok(analysis) => Some(analysis),
+        Ok(analysis) => (Some(analysis), true),
         Err(e) => {
             eprintln!("[velos] AI analysis error: {e}");
-            None
+            (None, true)
         }
     }
 }
@@ -131,6 +136,7 @@ fn build_telegram_message(
     timestamp: &str,
     log_lines: &[String],
     ai_analysis: &Option<String>,
+    ai_configured: bool,
 ) -> String {
     let h = html_escape;
     let mut text = format!(
@@ -172,11 +178,14 @@ fn build_telegram_message(
                 h(analysis),
             ));
         }
-        None => {
+        None if !ai_configured => {
             text.push_str(&format!(
                 "\n\n<i>{}</i>",
                 h(i18n.get("crash.no_analysis")),
             ));
+        }
+        None => {
+            // AI configured but analysis failed — don't show misleading "not configured" message
         }
     }
 
