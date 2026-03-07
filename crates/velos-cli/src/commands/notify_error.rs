@@ -15,6 +15,15 @@ pub async fn run(process_name: String) -> Result<(), VelosError> {
         return Ok(());
     }
 
+    // Small delay to let crash handler fire first if process is dying
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+    // Skip if process already crashed — crash notification handles that
+    if is_process_errored(&process_name).await {
+        eprintln!("[velos] skipping error notification for '{process_name}' — process already crashed");
+        return Ok(());
+    }
+
     let config = load_global_config()?;
 
     let language = config
@@ -245,6 +254,17 @@ async fn fetch_recent_logs(process_name: &str) -> Vec<String> {
     .await;
 
     result.unwrap_or_default()
+}
+
+async fn is_process_errored(process_name: &str) -> bool {
+    let result = async {
+        let mut client = crate::commands::connect().await?;
+        let procs = client.list().await?;
+        let proc = procs.iter().find(|p| p.name == process_name);
+        Ok::<bool, VelosError>(proc.map(|p| p.status_str() == "errored").unwrap_or(false))
+    }
+    .await;
+    result.unwrap_or(false)
 }
 
 async fn resolve_process_cwd(process_name: &str) -> String {

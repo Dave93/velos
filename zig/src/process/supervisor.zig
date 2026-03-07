@@ -55,6 +55,7 @@ pub const ProcessInfo = struct {
     consecutive_crashes: u32 = 0,
     last_restart_ms: u64 = 0,
     instance_id: u32 = 0, // cluster instance ID
+    last_crash_notify_ms: u64 = 0, // debounce for crash notifications
     // For CPU% delta calculation
     prev_cpu_time_ns: u64 = 0,
     prev_wall_time_ns: u64 = 0,
@@ -423,8 +424,12 @@ pub const Supervisor = struct {
 
             if (abnormal_exit) {
                 proc.status = .errored;
-                // Fire crash notification (fork+exec, non-blocking)
-                self.notifyCrash(proc.config.name, reap.exit_code);
+                // Fire crash notification with cooldown (60s per process)
+                const now_ms = @as(u64, @intCast(std.time.milliTimestamp()));
+                if (now_ms - proc.last_crash_notify_ms >= 60_000) {
+                    proc.last_crash_notify_ms = now_ms;
+                    self.notifyCrash(proc.config.name, reap.exit_code);
+                }
             } else {
                 proc.status = .stopped;
             }
