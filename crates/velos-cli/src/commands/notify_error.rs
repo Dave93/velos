@@ -9,6 +9,12 @@ use super::config::load_global_config;
 /// Hidden subcommand: called by the Zig daemon when an error pattern is detected
 /// in stderr logs of a running process (like Sentry — no crash needed).
 pub async fn run(process_name: String) -> Result<(), VelosError> {
+    // Skip notification if suppressed (e.g. after AI fix restart)
+    if super::ai::take_suppress_notifications(&process_name) {
+        eprintln!("[velos] notifications suppressed for '{process_name}' (post-fix restart)");
+        return Ok(());
+    }
+
     let config = load_global_config()?;
 
     let language = config

@@ -14,6 +14,12 @@ use super::config::load_global_config;
 /// Gathers logs, runs AI analysis (if configured), saves CrashRecord,
 /// and sends a Telegram notification with inline Fix/Ignore buttons.
 pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError> {
+    // Skip notification if suppressed (e.g. after AI fix restart)
+    if super::ai::take_suppress_notifications(&process_name) {
+        eprintln!("[velos] notifications suppressed for '{process_name}' (post-fix restart)");
+        return Ok(());
+    }
+
     let config = load_global_config()?;
 
     let language = config

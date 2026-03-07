@@ -99,6 +99,9 @@ pub async fn run_fix(crash_id: String) -> Result<(), VelosError> {
 }
 
 async fn restart_process(process_name: &str) {
+    // Suppress crash/error notifications for this restart
+    set_suppress_notifications(process_name);
+
     let result = async {
         let mut client = crate::commands::connect().await?;
         let id = crate::commands::resolve_id(&mut client, process_name).await?;
@@ -109,6 +112,32 @@ async fn restart_process(process_name: &str) {
     .await;
     if let Err(e) = result {
         eprintln!("[velos-ai] failed to restart '{process_name}': {e}");
+    }
+}
+
+/// Create a marker file to suppress the next crash/error notification for a process.
+fn set_suppress_notifications(process_name: &str) {
+    let dir = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".velos")
+        .join("crashes");
+    let _ = std::fs::create_dir_all(&dir);
+    let marker = dir.join(format!(".suppress-{process_name}"));
+    let _ = std::fs::write(&marker, "");
+}
+
+/// Check if notifications are suppressed for a process (and consume the marker).
+pub fn take_suppress_notifications(process_name: &str) -> bool {
+    let marker = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".velos")
+        .join("crashes")
+        .join(format!(".suppress-{process_name}"));
+    if marker.exists() {
+        let _ = std::fs::remove_file(&marker);
+        true
+    } else {
+        false
     }
 }
 
