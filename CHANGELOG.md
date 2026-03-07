@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.13] - 2026-03-07
+
+### Added
+- CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md for open-source community
+- GitHub issue templates (bug report, feature request) and PR template
+- `.editorconfig` for consistent formatting across editors
+
+### Changed
+- README: rewrite "Why Velos?" section with narrative and accurate benchmarks (~3 MB measured)
+- README: add Runtime Error Detection, auto-daemon, Telegram crash alerts documentation
+- README: fix integration test count (35 -> 49), update runtime directory structure
+- CLAUDE.md: translate to English, remove internal workflow instructions
+- Expand .gitignore with IDE, OS, and environment file patterns
+
+### Removed
+- Internal development docs: task checklists, design plans, concept, roadmap (not needed for public repo)
+
 ## [0.1.12] - 2026-03-07
 
 ### Added
