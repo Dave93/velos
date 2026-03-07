@@ -138,7 +138,7 @@ fn handle_callback(
     let message_id = cb.message.as_ref().and_then(|m| m.message_id);
 
     if let Some(crash_id) = data.strip_prefix("fix:") {
-        handle_fix(telegram, ai_config, &i18n, crash_id, chat_id, message_id);
+        handle_fix(telegram, ai_config, &i18n, language, crash_id, chat_id, message_id);
     } else if let Some(crash_id) = data.strip_prefix("ignore:") {
         handle_ignore(telegram, &i18n, crash_id, chat_id, message_id);
     }
@@ -148,6 +148,7 @@ fn handle_fix(
     telegram: &TelegramConfig,
     _ai_config: &Option<AiConfigToml>,
     i18n: &I18n,
+    i18n_lang: &str,
     crash_id: &str,
     chat_id: i64,
     message_id: Option<i64>,
@@ -206,54 +207,78 @@ fn handle_fix(
 
     eprintln!("[velos] spawning fix for {crash_id}, logs: {}", log_path.display());
 
-    let result = std::process::Command::new(&exe)
+    let stderr_file = match std::fs::File::create(&log_path) {
+        Ok(f) => f,
+        Err(_) => {
+            let _ = std::fs::OpenOptions::new().append(true).open(&log_path).unwrap();
+            return;
+        }
+    };
+
+    let child = std::process::Command::new(&exe)
         .args(["ai", "fix", crash_id])
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::from(log_file.try_clone().unwrap_or_else(|_| log_file)))
-        .stderr(std::process::Stdio::from(
-            std::fs::File::create(&log_path).unwrap_or_else(|_| {
-                std::fs::OpenOptions::new().append(true).open(&log_path).unwrap()
-            }),
-        ))
-        .status();
+        .stderr(std::process::Stdio::from(stderr_file))
+        .spawn();
 
-    // Reload record to check final status
-    let record = CrashRecord::load(crash_id);
-
-    match (result, record) {
-        (Ok(status), Ok(record)) if status.success() && record.status == CrashStatus::Fixed => {
-            let summary = truncate(record.fix_result.as_deref().unwrap_or(""), 3000);
-            let msg = format!(
-                "\u{2705} <b>{}</b>\n\n<b>{}:</b>\n{}",
-                i18n.get("fix.completed"),
-                i18n.get("fix.changes_summary"),
-                html_escape(&summary),
-            );
-            let _ = send_message(&telegram.bot_token, chat_id, &msg);
-        }
-        (Ok(_), Ok(record)) => {
-            let err = record.fix_result.as_deref().unwrap_or("unknown error");
-            let _ = send_message(
-                &telegram.bot_token,
-                chat_id,
-                &format!("\u{274C} {}: {}", i18n.get("fix.failed"), html_escape(err)),
-            );
-        }
-        (Err(e), _) => {
+    let mut child = match child {
+        Ok(c) => c,
+        Err(e) => {
             let _ = send_message(
                 &telegram.bot_token,
                 chat_id,
                 &format!("\u{274C} {}: {e}", i18n.get("fix.failed")),
             );
+            return;
         }
-        _ => {
-            let _ = send_message(
-                &telegram.bot_token,
-                chat_id,
-                &format!("\u{274C} {}", i18n.get("fix.failed")),
-            );
+    };
+
+    // Wait for fix in a separate thread so we don't block the poller
+    let bot_token = telegram.bot_token.clone();
+    let crash_id_owned = crash_id.to_string();
+    let lang = i18n_lang.to_string();
+    std::thread::spawn(move || {
+        let result = child.wait();
+        let i18n = I18n::new(&lang);
+
+        let record = CrashRecord::load(&crash_id_owned);
+
+        match (result, record) {
+            (Ok(status), Ok(record)) if status.success() && record.status == CrashStatus::Fixed => {
+                let summary = truncate(record.fix_result.as_deref().unwrap_or(""), 3000);
+                let msg = format!(
+                    "\u{2705} <b>{}</b>\n\n<b>{}:</b>\n{}",
+                    i18n.get("fix.completed"),
+                    i18n.get("fix.changes_summary"),
+                    html_escape(&summary),
+                );
+                let _ = send_message(&bot_token, chat_id, &msg);
+            }
+            (Ok(_), Ok(record)) => {
+                let err = record.fix_result.as_deref().unwrap_or("unknown error");
+                let _ = send_message(
+                    &bot_token,
+                    chat_id,
+                    &format!("\u{274C} {}: {}", i18n.get("fix.failed"), html_escape(err)),
+                );
+            }
+            (Err(e), _) => {
+                let _ = send_message(
+                    &bot_token,
+                    chat_id,
+                    &format!("\u{274C} {}: {e}", i18n.get("fix.failed")),
+                );
+            }
+            _ => {
+                let _ = send_message(
+                    &bot_token,
+                    chat_id,
+                    &format!("\u{274C} {}", i18n.get("fix.failed")),
+                );
+            }
         }
-    }
+    });
 }
 
 fn handle_ignore(

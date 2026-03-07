@@ -46,6 +46,8 @@ fn en() -> &'static HashMap<&'static str, &'static str> {
         m.insert("fix.iterations", "iterations");
         m.insert("fix.tool_calls", "tool calls");
         m.insert("fix.tokens", "tokens");
+        // Error detection (runtime, no crash)
+        m.insert("error.title", "Error Detected");
         // Config
         m.insert("config.no_ai", "AI not configured");
         m
@@ -76,6 +78,8 @@ fn ru() -> &'static HashMap<&'static str, &'static str> {
         m.insert("fix.iterations", "\u{0438}\u{0442}\u{0435}\u{0440}\u{0430}\u{0446}\u{0438}\u{0439}");
         m.insert("fix.tool_calls", "\u{0432}\u{044b}\u{0437}\u{043e}\u{0432}\u{043e}\u{0432} \u{0438}\u{043d}\u{0441}\u{0442}\u{0440}\u{0443}\u{043c}\u{0435}\u{043d}\u{0442}\u{043e}\u{0432}");
         m.insert("fix.tokens", "\u{0442}\u{043e}\u{043a}\u{0435}\u{043d}\u{043e}\u{0432}");
+        // Error detection (runtime, no crash)
+        m.insert("error.title", "\u{041e}\u{0448}\u{0438}\u{0431}\u{043a}\u{0430} \u{0432} \u{043f}\u{0440}\u{043e}\u{0446}\u{0435}\u{0441}\u{0441}\u{0435}");
         // Config
         m.insert("config.no_ai", "AI \u{043d}\u{0435} \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0435}\u{043d}");
         m

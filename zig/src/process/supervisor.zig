@@ -96,6 +96,9 @@ pub const Supervisor = struct {
     // Path to velos binary for crash notification fork+exec
     notify_binary: ?[]const u8 = null,
 
+    // Global instance pointer for log collector callback
+    var global_instance: ?*Self = null;
+
     pub fn init(allocator: std.mem.Allocator, log_collector: *LogCollector) Self {
         return Self{
             .processes = std.AutoHashMap(u32, *ProcessInfo).init(allocator),
@@ -112,6 +115,12 @@ pub const Supervisor = struct {
             .ipc_channels = std.AutoHashMap(u32, IpcChannel).init(allocator),
             .last_cron_minute = -1,
         };
+    }
+
+    /// Must be called after init once we have a stable pointer (after field assignment).
+    pub fn postInit(self: *Self) void {
+        global_instance = self;
+        self.log_collector.error_callback = &onLogError;
     }
 
     pub fn deinit(self: *Self) void {
@@ -506,6 +515,46 @@ pub const Supervisor = struct {
             posix.exit(1);
         }
         // Parent: don't wait — SIGCHLD handler will reap it (and ignore unknown PIDs)
+    }
+
+    /// Fork+exec the notify binary to send error notification (non-blocking).
+    /// Similar to notifyCrash but uses "notify-error" subcommand for runtime errors.
+    fn notifyError(self: *Self, name: []const u8) void {
+        const bin_path = self.notify_binary orelse return;
+
+        const bin_z = self.allocator.dupeZ(u8, bin_path) catch return;
+        defer self.allocator.free(bin_z);
+        const name_z = self.allocator.dupeZ(u8, name) catch return;
+        defer self.allocator.free(name_z);
+
+        const argv = [_:null]?[*:0]const u8{
+            bin_z.ptr,
+            @as([*:0]const u8, @ptrCast("notify-error")),
+            name_z.ptr,
+            null,
+        };
+
+        const pid = std.c.fork();
+        if (pid == 0) {
+            const devnull = posix.open("/dev/null", .{ .ACCMODE = .WRONLY }, 0) catch {
+                posix.exit(1);
+            };
+            posix.dup2(devnull, posix.STDOUT_FILENO) catch {};
+
+            const log_fd = posix.open("/tmp/velos-notify-error.log", .{ .ACCMODE = .WRONLY, .CREAT = true, .APPEND = true }, 0o644) catch devnull;
+            posix.dup2(log_fd, posix.STDERR_FILENO) catch {};
+            if (log_fd != devnull) posix.close(log_fd);
+            posix.close(devnull);
+
+            _ = @errorName(posix.execvpeZ(argv[0].?, @ptrCast(&argv), std.c.environ));
+            posix.exit(1);
+        }
+    }
+
+    /// Static callback invoked by LogCollector when an error pattern is detected.
+    fn onLogError(name: []const u8, _: u32) void {
+        const self = global_instance orelse return;
+        self.notifyError(name);
     }
 
     /// Execute a restart for a process: create new pipes, fork/exec, update state.

@@ -1,8 +1,4 @@
-use std::path::Path;
-
-use velos_ai::analyzer::{
-    self, CrashContext, CrashRecord, CrashStatus, SourceSnippet,
-};
+use velos_ai::analyzer::{self, CrashContext, CrashRecord, CrashStatus, SourceSnippet};
 use velos_ai::i18n::I18n;
 use velos_ai::provider::create_provider;
 use velos_ai::types::AiConfig;
@@ -10,10 +6,9 @@ use velos_core::VelosError;
 
 use super::config::load_global_config;
 
-/// Hidden subcommand: called by the Zig daemon via fork+exec on process crash.
-/// Gathers logs, runs AI analysis (if configured), saves CrashRecord,
-/// and sends a Telegram notification with inline Fix/Ignore buttons.
-pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError> {
+/// Hidden subcommand: called by the Zig daemon when an error pattern is detected
+/// in stderr logs of a running process (like Sentry — no crash needed).
+pub async fn run(process_name: String) -> Result<(), VelosError> {
     let config = load_global_config()?;
 
     let language = config
@@ -23,27 +18,26 @@ pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError>
         .unwrap_or("en");
     let i18n = I18n::new(language);
 
-    // Fetch last 20 log lines for context
     let log_lines = fetch_recent_logs(&process_name).await;
+    if log_lines.is_empty() {
+        return Ok(());
+    }
 
-    let hostname = hostname();
-    let timestamp = chrono_now();
-
-    // Resolve working directory for source context
+    let hostname = crate::commands::notify_crash::hostname();
+    let timestamp = crate::commands::notify_crash::chrono_now();
     let cwd = resolve_process_cwd(&process_name).await;
 
     // Extract source references from stack traces
     let source_refs = analyzer::extract_source_refs(&log_lines);
-    let cwd_path = Path::new(&cwd);
+    let cwd_path = std::path::Path::new(&cwd);
     let source_snippets: Vec<SourceSnippet> = source_refs
         .iter()
         .filter_map(|(file, line)| analyzer::read_source_context(file, *line, cwd_path, 5))
         .collect();
 
-    // Build crash context
     let ctx = CrashContext {
         process_name: process_name.clone(),
-        exit_code,
+        exit_code: 0, // process is still running
         hostname: hostname.clone(),
         timestamp: timestamp.clone(),
         cwd: cwd.clone(),
@@ -52,14 +46,14 @@ pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError>
     };
 
     // Run AI analysis if configured
-    let (ai_analysis, ai_configured) = run_ai_analysis(&config.ai, &ctx);
+    let ai_analysis = run_ai_analysis(&config.ai, &ctx);
 
-    // Create and save crash record
+    // Create and save crash record (reuse CrashRecord for error too)
     let crash_id = uuid::Uuid::new_v4().to_string();
     let record = CrashRecord {
         id: crash_id.clone(),
         process_name: process_name.clone(),
-        exit_code,
+        exit_code: 0,
         hostname: hostname.clone(),
         timestamp: timestamp.clone(),
         cwd: cwd.clone(),
@@ -70,15 +64,28 @@ pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError>
         language: language.to_string(),
     };
     if let Err(e) = record.save() {
-        eprintln!("[velos] failed to save crash record: {e}");
+        eprintln!("[velos] failed to save error record: {e}");
     }
 
     // Send Telegram notification
     let telegram = config.notifications.and_then(|n| n.telegram);
     if let Some(t) = telegram {
         if !t.bot_token.is_empty() && !t.chat_id.is_empty() {
-            let text = build_telegram_message(&i18n, &process_name, exit_code, &hostname, &timestamp, &log_lines, &ai_analysis, ai_configured);
-            if let Err(e) = send_telegram_with_buttons(&t.bot_token, &t.chat_id, &text, &crash_id, &i18n) {
+            let text = build_telegram_message(
+                &i18n,
+                &process_name,
+                &hostname,
+                &timestamp,
+                &log_lines,
+                &ai_analysis,
+            );
+            if let Err(e) = send_telegram_with_buttons(
+                &t.bot_token,
+                &t.chat_id,
+                &text,
+                &crash_id,
+                &i18n,
+            ) {
                 eprintln!("[velos] Telegram send error: {e}");
             }
         }
@@ -87,18 +94,13 @@ pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError>
     Ok(())
 }
 
-/// Returns (analysis_result, is_ai_configured).
 fn run_ai_analysis(
     ai_config: &Option<super::config::AiConfigToml>,
     ctx: &CrashContext,
-) -> (Option<String>, bool) {
-    let ai = match ai_config.as_ref() {
-        Some(ai) if !ai.provider.is_empty() && !ai.api_key.is_empty() => ai,
-        _ => return (None, false),
-    };
-
-    if !ai.auto_analyze {
-        return (None, true);
+) -> Option<String> {
+    let ai = ai_config.as_ref()?;
+    if !ai.auto_analyze || ai.provider.is_empty() || ai.api_key.is_empty() {
+        return None;
     }
 
     let config = AiConfig {
@@ -115,15 +117,15 @@ fn run_ai_analysis(
         Ok(p) => p,
         Err(e) => {
             eprintln!("[velos] AI provider error: {e}");
-            return (None, true);
+            return None;
         }
     };
 
     match analyzer::analyze(provider.as_ref(), ctx) {
-        Ok(analysis) => (Some(analysis), true),
+        Ok(analysis) => Some(analysis),
         Err(e) => {
             eprintln!("[velos] AI analysis error: {e}");
-            (None, true)
+            None
         }
     }
 }
@@ -131,32 +133,31 @@ fn run_ai_analysis(
 fn build_telegram_message(
     i18n: &I18n,
     process_name: &str,
-    exit_code: i32,
     hostname: &str,
     timestamp: &str,
     log_lines: &[String],
     ai_analysis: &Option<String>,
-    ai_configured: bool,
 ) -> String {
     let h = html_escape;
     let mut text = format!(
-        "\u{1F6A8} <b>{}</b>\n\n\
-         <b>{}:</b> <code>{}</code>\n\
+        "\u{26A0}\u{FE0F} <b>{}</b>\n\n\
          <b>{}:</b> <code>{}</code>\n\
          <b>{}:</b> <code>{}</code>\n\
          <b>{}:</b> {}",
-        h(i18n.get("crash.title")),
-        h(i18n.get("crash.name")), h(process_name),
-        h(i18n.get("crash.exit_code")), exit_code,
-        h(i18n.get("crash.host")), h(hostname),
-        h(i18n.get("crash.time")), h(timestamp),
+        h(i18n.get("error.title")),
+        h(i18n.get("crash.name")),
+        h(process_name),
+        h(i18n.get("crash.host")),
+        h(hostname),
+        h(i18n.get("crash.time")),
+        h(timestamp),
     );
 
     if !log_lines.is_empty() {
         let log_tail: String = log_lines
             .iter()
             .rev()
-            .take(10)
+            .take(15)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
@@ -170,23 +171,12 @@ fn build_telegram_message(
         ));
     }
 
-    match ai_analysis {
-        Some(analysis) => {
-            text.push_str(&format!(
-                "\n\n<b>{}:</b>\n{}",
-                h(i18n.get("crash.analysis_header")),
-                h(analysis),
-            ));
-        }
-        None if !ai_configured => {
-            text.push_str(&format!(
-                "\n\n<i>{}</i>",
-                h(i18n.get("crash.no_analysis")),
-            ));
-        }
-        None => {
-            // AI configured but analysis failed — don't show misleading "not configured" message
-        }
+    if let Some(analysis) = ai_analysis {
+        text.push_str(&format!(
+            "\n\n<b>{}:</b>\n{}",
+            h(i18n.get("crash.analysis_header")),
+            h(analysis),
+        ));
     }
 
     text
@@ -236,7 +226,7 @@ async fn fetch_recent_logs(process_name: &str) -> Vec<String> {
     let result = async {
         let mut client = crate::commands::connect().await?;
         let id = crate::commands::resolve_id(&mut client, process_name).await?;
-        let logs = client.logs(id, 20).await?;
+        let logs = client.logs(id, 30).await?;
         let lines: Vec<String> = logs
             .iter()
             .map(|e| {
@@ -261,51 +251,4 @@ async fn resolve_process_cwd(process_name: &str) -> String {
     .await;
 
     result.unwrap_or_default()
-}
-
-pub fn hostname() -> String {
-    std::fs::read_to_string("/etc/hostname")
-        .map(|s| s.trim().to_string())
-        .or_else(|_| {
-            std::process::Command::new("hostname")
-                .output()
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        })
-        .unwrap_or_else(|_| "unknown".to_string())
-}
-
-pub fn chrono_now() -> String {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-
-    let secs_in_day = 86400u64;
-    let secs_in_hour = 3600u64;
-    let secs_in_min = 60u64;
-
-    let days_since_epoch = now / secs_in_day;
-    let time_of_day = now % secs_in_day;
-
-    let hours = time_of_day / secs_in_hour;
-    let minutes = (time_of_day % secs_in_hour) / secs_in_min;
-    let seconds = time_of_day % secs_in_min;
-
-    let (year, month, day) = days_to_ymd(days_since_epoch);
-
-    format!("{year:04}-{month:02}-{day:02} {hours:02}:{minutes:02}:{seconds:02} UTC")
-}
-
-fn days_to_ymd(days: u64) -> (u64, u64, u64) {
-    let z = days + 719468;
-    let era = z / 146097;
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
-    (y, m, d)
 }

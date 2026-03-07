@@ -17,6 +17,7 @@ pub mod logs;
 pub mod metrics;
 pub mod monit;
 pub mod notify_crash;
+pub mod notify_error;
 pub mod ping;
 pub mod reload;
 pub mod restart;

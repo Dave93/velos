@@ -151,6 +151,7 @@ export fn velos_daemon_init(
 
     // Initialize supervisor
     g_supervisor = Supervisor.init(g_allocator, &g_log_collector.?);
+    g_supervisor.?.postInit();
 
     // Initialize IPC server
     g_ipc_server = IpcServer.init(

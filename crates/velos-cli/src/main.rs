@@ -274,6 +274,12 @@ enum Commands {
         /// Exit code
         exit_code: i32,
     },
+    /// Internal: send error notification (called by daemon on stderr error patterns)
+    #[command(hide = true)]
+    NotifyError {
+        /// Process name
+        name: String,
+    },
     /// Internal: run Telegram callback poller (called by daemon)
     #[command(hide = true)]
     TelegramPoller,
@@ -439,6 +445,9 @@ async fn main() {
         },
         Commands::NotifyCrash { name, exit_code } => {
             commands::notify_crash::run(name, exit_code).await
+        }
+        Commands::NotifyError { name } => {
+            commands::notify_error::run(name).await
         }
         Commands::TelegramPoller => {
             commands::telegram_poller::run_poller()

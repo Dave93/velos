@@ -17,12 +17,20 @@ pub const LogCollector = struct {
         ring: RingBuffer,
         log_max_size: u64 = 10 * 1024 * 1024,
         log_retain_count: u32 = 30,
+        last_error_notify_ms: u64 = 0, // debounce for error notifications
     };
 
     processes: std.AutoHashMap(u32, *ProcessLog), // process_id -> log state
     fd_to_process: std.AutoHashMap(posix.fd_t, FdInfo),
     writer: LogWriter,
     allocator: std.mem.Allocator,
+
+    /// Callback when an error pattern is detected in stderr.
+    /// Args: process_name, process_id
+    error_callback: ?*const fn ([]const u8, u32) void = null,
+
+    /// Cooldown between error notifications per process (ms)
+    error_cooldown_ms: u64 = 60_000,
 
     const FdInfo = struct {
         process_id: u32,
@@ -206,6 +214,51 @@ pub const LogCollector = struct {
             proc_log.log_max_size,
             proc_log.log_retain_count,
         ) catch {};
+
+        // Detect error patterns in stderr lines
+        if (stream == 1 and self.error_callback != null) {
+            if (isErrorPattern(line)) {
+                if (timestamp_ms - proc_log.last_error_notify_ms >= self.error_cooldown_ms) {
+                    proc_log.last_error_notify_ms = timestamp_ms;
+                    self.error_callback.?(proc_log.name, proc_log.process_id);
+                }
+            }
+        }
+    }
+
+    /// Check if a stderr line matches common error patterns.
+    fn isErrorPattern(line: []const u8) bool {
+        // Python
+        if (contains(line, "Traceback (most recent call last)")) return true;
+        // Node.js / JS
+        if (contains(line, "ReferenceError:")) return true;
+        if (contains(line, "TypeError:")) return true;
+        if (contains(line, "SyntaxError:")) return true;
+        if (contains(line, "RangeError:")) return true;
+        if (contains(line, "UnhandledPromiseRejection")) return true;
+        if (contains(line, "unhandledRejection")) return true;
+        // Go / Rust
+        if (contains(line, "panic:")) return true;
+        if (contains(line, "PANIC:")) return true;
+        if (contains(line, "thread 'main' panicked")) return true;
+        // Java / JVM
+        if (contains(line, "Exception in thread")) return true;
+        if (contains(line, "java.lang.")) return true;
+        // Generic
+        if (contains(line, "FATAL")) return true;
+        if (contains(line, "fatal error")) return true;
+        if (contains(line, "segmentation fault")) return true;
+        if (contains(line, "Segmentation fault")) return true;
+        return false;
+    }
+
+    fn contains(haystack: []const u8, needle: []const u8) bool {
+        if (needle.len > haystack.len) return false;
+        var i: usize = 0;
+        while (i + needle.len <= haystack.len) : (i += 1) {
+            if (std.mem.eql(u8, haystack[i..][0..needle.len], needle)) return true;
+        }
+        return false;
     }
 
     /// Read last N log lines for a process
