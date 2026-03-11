@@ -48,7 +48,7 @@ pub fn run_poller() -> Result<(), VelosError> {
                             }
                         }));
                         if let Err(e) = result {
-                            eprintln!("[velos] callback handler panicked: {:?}", e);
+                            eprintln!("[velos] callback handler panicked: {e:?}");
                         }
                     }
                 }
@@ -95,7 +95,7 @@ fn poll_updates(bot_token: &str, offset: i64) -> Result<Vec<Update>, VelosError>
     let url = format!("https://api.telegram.org/bot{bot_token}/getUpdates");
 
     let resp = ureq::post(&url)
-        .send_json(&serde_json::json!({
+        .send_json(serde_json::json!({
             "offset": offset,
             "timeout": 30,
             "allowed_updates": ["callback_query"]
@@ -225,7 +225,7 @@ fn handle_fix(
         .args(["ai", "fix", crash_id])
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::from(
-            log_file.try_clone().unwrap_or_else(|_| log_file),
+            log_file.try_clone().unwrap_or(log_file),
         ))
         .stderr(std::process::Stdio::from(stderr_file))
         .spawn();
@@ -331,7 +331,7 @@ fn handle_ignore(
 fn answer_callback(bot_token: &str, callback_id: &str, text: &str) -> Result<(), String> {
     let url = format!("https://api.telegram.org/bot{bot_token}/answerCallbackQuery");
     ureq::post(&url)
-        .send_json(&serde_json::json!({
+        .send_json(serde_json::json!({
             "callback_query_id": callback_id,
             "text": text,
         }))
@@ -342,7 +342,7 @@ fn answer_callback(bot_token: &str, callback_id: &str, text: &str) -> Result<(),
 fn send_message(bot_token: &str, chat_id: i64, text: &str) -> Result<(), String> {
     let url = format!("https://api.telegram.org/bot{bot_token}/sendMessage");
     ureq::post(&url)
-        .send_json(&serde_json::json!({
+        .send_json(serde_json::json!({
             "chat_id": chat_id,
             "text": text,
             "parse_mode": "HTML",
@@ -354,7 +354,7 @@ fn send_message(bot_token: &str, chat_id: i64, text: &str) -> Result<(), String>
 fn remove_inline_keyboard(bot_token: &str, chat_id: i64, message_id: i64) -> Result<(), String> {
     let url = format!("https://api.telegram.org/bot{bot_token}/editMessageReplyMarkup");
     ureq::post(&url)
-        .send_json(&serde_json::json!({
+        .send_json(serde_json::json!({
             "chat_id": chat_id,
             "message_id": message_id,
         }))

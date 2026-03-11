@@ -33,6 +33,12 @@ pub struct ToolRegistry {
     tools: HashMap<String, Box<dyn ToolExecutor>>,
 }
 
+impl Default for ToolRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ToolRegistry {
     pub fn new() -> Self {
         Self {
@@ -100,7 +106,7 @@ pub fn safe_resolve(path_str: &str, cwd: &Path) -> Result<PathBuf, String> {
             .canonicalize()
             .map_err(|e| format!("cannot resolve path: {e}"))?;
         if !canon.starts_with(&canon_cwd) {
-            return Err(format!("path escapes project directory: {}", path_str));
+            return Err(format!("path escapes project directory: {path_str}"));
         }
         return Ok(canon);
     }
@@ -112,7 +118,7 @@ pub fn safe_resolve(path_str: &str, cwd: &Path) -> Result<PathBuf, String> {
                 .canonicalize()
                 .map_err(|e| format!("cannot resolve parent: {e}"))?;
             if !canon_parent.starts_with(&canon_cwd) {
-                return Err(format!("path escapes project directory: {}", path_str));
+                return Err(format!("path escapes project directory: {path_str}"));
             }
             return Ok(canon_parent.join(resolved.file_name().unwrap_or_default()));
         }

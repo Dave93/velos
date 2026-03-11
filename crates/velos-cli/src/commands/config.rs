@@ -65,7 +65,7 @@ pub fn load_global_config() -> Result<GlobalConfig, VelosError> {
     if !path.exists() {
         return Ok(GlobalConfig::default());
     }
-    let content = std::fs::read_to_string(&path).map_err(|e| VelosError::Io(e))?;
+    let content = std::fs::read_to_string(&path).map_err(VelosError::Io)?;
     toml::from_str(&content)
         .map_err(|e| VelosError::ProtocolError(format!("config parse error: {e}")))
 }

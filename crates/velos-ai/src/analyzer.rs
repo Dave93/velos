@@ -60,17 +60,16 @@ impl CrashRecord {
     pub fn save(&self) -> Result<(), std::io::Error> {
         let dir = crashes_dir();
         std::fs::create_dir_all(&dir)?;
-        let path = dir.join(format!("{}.json", self.id));
-        let json = serde_json::to_string_pretty(self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let id = &self.id;
+        let path = dir.join(format!("{id}.json"));
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         std::fs::write(path, json)
     }
 
     pub fn load(id: &str) -> Result<Self, std::io::Error> {
         let path = crashes_dir().join(format!("{id}.json"));
         let content = std::fs::read_to_string(path)?;
-        serde_json::from_str(&content)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        serde_json::from_str(&content).map_err(std::io::Error::other)
     }
 }
 

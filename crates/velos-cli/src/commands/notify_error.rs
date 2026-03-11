@@ -224,7 +224,7 @@ fn send_telegram_with_buttons(
     });
 
     ureq::post(&url)
-        .send_json(&serde_json::json!({
+        .send_json(serde_json::json!({
             "chat_id": chat_id,
             "text": text,
             "parse_mode": "HTML",

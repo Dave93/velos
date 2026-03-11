@@ -211,7 +211,7 @@ pub async fn run_analyze(crash_id: String) -> Result<(), VelosError> {
         source_snippets,
     };
 
-    println!("Analyzing crash {}...", crash_id);
+    println!("Analyzing crash {crash_id}...");
 
     match analyzer::analyze(provider.as_ref(), &ctx) {
         Ok(analysis) => {
@@ -272,8 +272,8 @@ pub async fn run_list(json: bool) -> Result<(), VelosError> {
         println!("No crash records found.");
     } else {
         println!(
-            "{:<38} {:<15} {:<6} {:<10} {}",
-            "ID", "PROCESS", "EXIT", "STATUS", "TIME"
+            "{:<38} {:<15} {:<6} {:<10} TIME",
+            "ID", "PROCESS", "EXIT", "STATUS"
         );
         for r in &records {
             let status = format!("{:?}", r.status).to_lowercase();
@@ -300,7 +300,7 @@ pub async fn run_ignore(crash_id: String) -> Result<(), VelosError> {
         .save()
         .map_err(|e| VelosError::ProtocolError(e.to_string()))?;
 
-    println!("Crash {} marked as ignored.", crash_id);
+    println!("Crash {crash_id} marked as ignored.");
     Ok(())
 }
 

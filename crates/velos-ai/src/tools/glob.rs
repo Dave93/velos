@@ -42,11 +42,7 @@ impl ToolExecutor for GlobTool {
         };
 
         // Build full pattern
-        let full_pattern = if pattern.starts_with('/') || pattern.starts_with("**") {
-            format!("{}/{}", search_root.display(), pattern)
-        } else {
-            format!("{}/{}", search_root.display(), pattern)
-        };
+        let full_pattern = format!("{}/{}", search_root.display(), pattern);
 
         let mut results = Vec::new();
         let entries =

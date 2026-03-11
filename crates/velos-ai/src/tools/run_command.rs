@@ -117,11 +117,11 @@ impl ToolExecutor for RunCommand {
                 output.push_str(&format!("Exit code: {}\n", status.code().unwrap_or(-1)));
                 if !stdout.is_empty() {
                     output.push_str("\n--- stdout ---\n");
-                    output.push_str(&truncate(&stdout, MAX_OUTPUT));
+                    output.push_str(truncate(&stdout, MAX_OUTPUT));
                 }
                 if !stderr.is_empty() {
                     output.push_str("\n--- stderr ---\n");
-                    output.push_str(&truncate(&stderr, MAX_OUTPUT));
+                    output.push_str(truncate(&stderr, MAX_OUTPUT));
                 }
 
                 if status.success() {

@@ -58,7 +58,7 @@ pub async fn connect() -> Result<VelosClient, VelosError> {
 
 /// Spawn daemon as a background process if it's not already running.
 fn ensure_daemon_running() -> Result<(), VelosError> {
-    let exe = std::env::current_exe().map_err(|e| VelosError::Io(e))?;
+    let exe = std::env::current_exe().map_err(VelosError::Io)?;
 
     eprintln!("[velos] Daemon not running — starting automatically...");
 
@@ -79,7 +79,7 @@ fn ensure_daemon_running() -> Result<(), VelosError> {
         .stdout(std::process::Stdio::from(stdout_log))
         .stderr(std::process::Stdio::from(stderr_log))
         .spawn()
-        .map_err(|e| VelosError::Io(e))?;
+        .map_err(VelosError::Io)?;
 
     Ok(())
 }

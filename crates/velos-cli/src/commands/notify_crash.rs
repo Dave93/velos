@@ -143,6 +143,7 @@ fn run_ai_analysis(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_telegram_message(
     i18n: &I18n,
     process_name: &str,
@@ -237,7 +238,7 @@ fn send_telegram_with_buttons(
     });
 
     ureq::post(&url)
-        .send_json(&serde_json::json!({
+        .send_json(serde_json::json!({
             "chat_id": chat_id,
             "text": text,
             "parse_mode": "HTML",

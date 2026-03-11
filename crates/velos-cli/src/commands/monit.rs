@@ -478,7 +478,7 @@ fn draw_header(f: &mut ratatui::Frame, state: &AppState, area: Rect) {
         Span::styled("| ", Style::default().fg(cat::SURFACE2)),
         Span::styled("CPU ", Style::default().fg(cat::SUBTEXT0)),
         Span::styled(
-            format!("{:.1}% ", total_cpu),
+            format!("{total_cpu:.1}% "),
             Style::default().fg(cat::PEACH).add_modifier(Modifier::BOLD),
         ),
         Span::styled("| ", Style::default().fg(cat::SURFACE2)),

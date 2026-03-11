@@ -161,9 +161,8 @@ fn should_skip(path: &Path) -> bool {
 
 /// Simple glob matching for file names (supports * and ?).
 fn simple_glob_match(pattern: &str, name: &str) -> bool {
-    if pattern.starts_with("*.") {
+    if let Some(ext) = pattern.strip_prefix("*.") {
         // Common case: "*.rs" -> check extension
-        let ext = &pattern[2..];
         name.ends_with(&format!(".{ext}"))
     } else if pattern.contains('*') {
         // Basic wildcard: convert to regex
