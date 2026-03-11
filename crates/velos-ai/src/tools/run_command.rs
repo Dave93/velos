@@ -1,10 +1,10 @@
+use serde_json::json;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
-use serde_json::json;
 use wait_timeout::ChildExt;
 
-use super::{ToolExecutor, safe_resolve, required_str, optional_str, optional_u64};
+use super::{optional_str, optional_u64, required_str, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 const DEFAULT_TIMEOUT_MS: u64 = 60_000; // 60 seconds
@@ -32,7 +32,9 @@ const BLOCKED_PREFIXES: &[&str] = &[
 pub struct RunCommand;
 
 impl ToolExecutor for RunCommand {
-    fn name(&self) -> &str { "run_command" }
+    fn name(&self) -> &str {
+        "run_command"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {
@@ -65,9 +67,8 @@ impl ToolExecutor for RunCommand {
             Some(p) => safe_resolve(&p, cwd)?,
             None => cwd.to_path_buf(),
         };
-        let timeout = Duration::from_millis(
-            optional_u64(&input, "timeout_ms").unwrap_or(DEFAULT_TIMEOUT_MS),
-        );
+        let timeout =
+            Duration::from_millis(optional_u64(&input, "timeout_ms").unwrap_or(DEFAULT_TIMEOUT_MS));
 
         // Safety check
         let cmd_lower = cmd_str.to_lowercase();
@@ -92,17 +93,25 @@ impl ToolExecutor for RunCommand {
 
         match result {
             Some(status) => {
-                let stdout = child.stdout.take().map(|mut s| {
-                    let mut buf = String::new();
-                    std::io::Read::read_to_string(&mut s, &mut buf).ok();
-                    buf
-                }).unwrap_or_default();
+                let stdout = child
+                    .stdout
+                    .take()
+                    .map(|mut s| {
+                        let mut buf = String::new();
+                        std::io::Read::read_to_string(&mut s, &mut buf).ok();
+                        buf
+                    })
+                    .unwrap_or_default();
 
-                let stderr = child.stderr.take().map(|mut s| {
-                    let mut buf = String::new();
-                    std::io::Read::read_to_string(&mut s, &mut buf).ok();
-                    buf
-                }).unwrap_or_default();
+                let stderr = child
+                    .stderr
+                    .take()
+                    .map(|mut s| {
+                        let mut buf = String::new();
+                        std::io::Read::read_to_string(&mut s, &mut buf).ok();
+                        buf
+                    })
+                    .unwrap_or_default();
 
                 let mut output = String::new();
                 output.push_str(&format!("Exit code: {}\n", status.code().unwrap_or(-1)));

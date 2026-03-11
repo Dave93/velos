@@ -1,13 +1,15 @@
-use std::path::Path;
 use serde_json::json;
+use std::path::Path;
 
-use super::{ToolExecutor, safe_resolve, required_str};
+use super::{required_str, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 pub struct EditFile;
 
 impl ToolExecutor for EditFile {
-    fn name(&self) -> &str { "edit_file" }
+    fn name(&self) -> &str {
+        "edit_file"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {
@@ -40,8 +42,8 @@ impl ToolExecutor for EditFile {
         let new_text = required_str(&input, "new_text")?;
         let path = safe_resolve(&path_str, cwd)?;
 
-        let content = std::fs::read_to_string(&path)
-            .map_err(|e| format!("cannot read file: {e}"))?;
+        let content =
+            std::fs::read_to_string(&path).map_err(|e| format!("cannot read file: {e}"))?;
 
         let count = content.matches(&old_text).count();
         if count == 0 {
@@ -52,8 +54,7 @@ impl ToolExecutor for EditFile {
         }
 
         let new_content = content.replacen(&old_text, &new_text, 1);
-        std::fs::write(&path, &new_content)
-            .map_err(|e| format!("cannot write file: {e}"))?;
+        std::fs::write(&path, &new_content).map_err(|e| format!("cannot write file: {e}"))?;
 
         Ok(format!("Edited {path_str}: replaced 1 occurrence."))
     }

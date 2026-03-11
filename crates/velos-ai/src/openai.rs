@@ -149,15 +149,9 @@ impl OpenAiProvider {
         if let Some(tool_calls) = message["tool_calls"].as_array() {
             for tc in tool_calls {
                 let id = tc["id"].as_str().unwrap_or("").to_string();
-                let name = tc["function"]["name"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string();
-                let args_str = tc["function"]["arguments"]
-                    .as_str()
-                    .unwrap_or("{}");
-                let input: Value =
-                    serde_json::from_str(args_str).unwrap_or_else(|_| json!({}));
+                let name = tc["function"]["name"].as_str().unwrap_or("").to_string();
+                let args_str = tc["function"]["arguments"].as_str().unwrap_or("{}");
+                let input: Value = serde_json::from_str(args_str).unwrap_or_else(|_| json!({}));
                 content.push(ContentBlock::ToolUse { id, name, input });
             }
         }
@@ -169,12 +163,8 @@ impl OpenAiProvider {
         };
 
         let usage = Usage {
-            input_tokens: body["usage"]["prompt_tokens"]
-                .as_u64()
-                .unwrap_or(0) as u32,
-            output_tokens: body["usage"]["completion_tokens"]
-                .as_u64()
-                .unwrap_or(0) as u32,
+            input_tokens: body["usage"]["prompt_tokens"].as_u64().unwrap_or(0) as u32,
+            output_tokens: body["usage"]["completion_tokens"].as_u64().unwrap_or(0) as u32,
         };
 
         Ok(AssistantResponse {

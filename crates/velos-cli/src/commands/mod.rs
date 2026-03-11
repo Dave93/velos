@@ -5,7 +5,6 @@
 
 pub mod ai;
 pub mod api;
-pub mod telegram_poller;
 pub mod completions;
 pub mod config;
 pub mod daemon;
@@ -27,6 +26,7 @@ pub mod scale;
 pub mod start;
 pub mod startup;
 pub mod stop;
+pub mod telegram_poller;
 
 use velos_client::VelosClient;
 use velos_core::VelosError;
@@ -58,8 +58,7 @@ pub async fn connect() -> Result<VelosClient, VelosError> {
 
 /// Spawn daemon as a background process if it's not already running.
 fn ensure_daemon_running() -> Result<(), VelosError> {
-    let exe = std::env::current_exe()
-        .map_err(|e| VelosError::Io(e))?;
+    let exe = std::env::current_exe().map_err(|e| VelosError::Io(e))?;
 
     eprintln!("[velos] Daemon not running — starting automatically...");
 
@@ -69,10 +68,10 @@ fn ensure_daemon_running() -> Result<(), VelosError> {
         .join("logs");
     let _ = std::fs::create_dir_all(&log_dir);
 
-    let stdout_log = std::fs::File::create(log_dir.join("daemon-stdout.log"))
-        .map_err(VelosError::Io)?;
-    let stderr_log = std::fs::File::create(log_dir.join("daemon-stderr.log"))
-        .map_err(VelosError::Io)?;
+    let stdout_log =
+        std::fs::File::create(log_dir.join("daemon-stdout.log")).map_err(VelosError::Io)?;
+    let stderr_log =
+        std::fs::File::create(log_dir.join("daemon-stderr.log")).map_err(VelosError::Io)?;
 
     std::process::Command::new(&exe)
         .arg("daemon")

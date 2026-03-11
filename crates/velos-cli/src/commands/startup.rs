@@ -182,7 +182,11 @@ pub async fn run_startup() -> Result<(), VelosError> {
                 } else {
                     println!();
                     println!("  Load and start manually:");
-                    println!("    launchctl bootstrap {} {}", domain_target, path.display());
+                    println!(
+                        "    launchctl bootstrap {} {}",
+                        domain_target,
+                        path.display()
+                    );
                 }
             }
             println!();

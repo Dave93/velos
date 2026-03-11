@@ -1,7 +1,7 @@
-use std::path::Path;
 use serde_json::json;
+use std::path::Path;
 
-use super::{ToolExecutor, safe_resolve, required_str, optional_str};
+use super::{optional_str, required_str, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 const MAX_RESULTS: usize = 200;
@@ -9,7 +9,9 @@ const MAX_RESULTS: usize = 200;
 pub struct GlobTool;
 
 impl ToolExecutor for GlobTool {
-    fn name(&self) -> &str { "glob" }
+    fn name(&self) -> &str {
+        "glob"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {
@@ -47,8 +49,8 @@ impl ToolExecutor for GlobTool {
         };
 
         let mut results = Vec::new();
-        let entries = ::glob::glob(&full_pattern)
-            .map_err(|e| format!("invalid glob pattern: {e}"))?;
+        let entries =
+            ::glob::glob(&full_pattern).map_err(|e| format!("invalid glob pattern: {e}"))?;
 
         for entry in entries {
             if results.len() >= MAX_RESULTS {

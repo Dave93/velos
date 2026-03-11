@@ -446,12 +446,8 @@ async fn main() {
         Commands::NotifyCrash { name, exit_code } => {
             commands::notify_crash::run(name, exit_code).await
         }
-        Commands::NotifyError { name } => {
-            commands::notify_error::run(name).await
-        }
-        Commands::TelegramPoller => {
-            commands::telegram_poller::run_poller()
-        }
+        Commands::NotifyError { name } => commands::notify_error::run(name).await,
+        Commands::TelegramPoller => commands::telegram_poller::run_poller(),
         Commands::Completions { shell } => commands::completions::run(shell),
     };
 

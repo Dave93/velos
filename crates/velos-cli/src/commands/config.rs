@@ -46,8 +46,12 @@ pub struct TelegramConfig {
     pub chat_id: String,
 }
 
-fn default_max_iterations() -> u32 { 30 }
-fn default_true() -> bool { true }
+fn default_max_iterations() -> u32 {
+    30
+}
+fn default_true() -> bool {
+    true
+}
 
 pub fn config_path() -> PathBuf {
     dirs::home_dir()
@@ -61,8 +65,7 @@ pub fn load_global_config() -> Result<GlobalConfig, VelosError> {
     if !path.exists() {
         return Ok(GlobalConfig::default());
     }
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| VelosError::Io(e))?;
+    let content = std::fs::read_to_string(&path).map_err(|e| VelosError::Io(e))?;
     toml::from_str(&content)
         .map_err(|e| VelosError::ProtocolError(format!("config parse error: {e}")))
 }
@@ -110,9 +113,14 @@ pub async fn run_set(key: String, value: String) -> Result<(), VelosError> {
                 VelosError::ProtocolError("max_iterations must be a positive integer".into())
             })?;
             if n == 0 {
-                return Err(VelosError::ProtocolError("max_iterations must be > 0".into()));
+                return Err(VelosError::ProtocolError(
+                    "max_iterations must be > 0".into(),
+                ));
             }
-            config.ai.get_or_insert_with(Default::default).max_iterations = n;
+            config
+                .ai
+                .get_or_insert_with(Default::default)
+                .max_iterations = n;
         }
         "ai.auto_analyze" => {
             let b = parse_bool(&value)?;
@@ -156,33 +164,51 @@ pub async fn run_get(key: Option<String>) -> Result<(), VelosError> {
         // AI keys
         Some("ai.provider") => println!("{}", ai_field(&config, |a| &a.provider)),
         Some("ai.model") => println!("{}", ai_field(&config, |a| &a.model)),
-        Some("ai.api_key") => println!("{}", mask_secret("ai.api_key", &ai_field(&config, |a| &a.api_key))),
+        Some("ai.api_key") => println!(
+            "{}",
+            mask_secret("ai.api_key", &ai_field(&config, |a| &a.api_key))
+        ),
         Some("ai.base_url") => println!("{}", ai_field(&config, |a| &a.base_url)),
         Some("ai.max_iterations") => {
-            println!("{}", config.ai.as_ref().map(|a| a.max_iterations).unwrap_or(30));
+            println!(
+                "{}",
+                config.ai.as_ref().map(|a| a.max_iterations).unwrap_or(30)
+            );
         }
         Some("ai.auto_analyze") => {
-            println!("{}", config.ai.as_ref().map(|a| a.auto_analyze).unwrap_or(true));
+            println!(
+                "{}",
+                config.ai.as_ref().map(|a| a.auto_analyze).unwrap_or(true)
+            );
         }
         Some("ai.auto_fix") => {
-            println!("{}", config.ai.as_ref().map(|a| a.auto_fix).unwrap_or(false));
+            println!(
+                "{}",
+                config.ai.as_ref().map(|a| a.auto_fix).unwrap_or(false)
+            );
         }
         // Notification keys
         Some("notifications.language") => {
-            let lang = config.notifications.as_ref()
+            let lang = config
+                .notifications
+                .as_ref()
                 .and_then(|n| n.language.as_deref())
                 .unwrap_or("en");
             println!("{lang}");
         }
         Some("telegram.bot_token") => {
-            let val = config.notifications.as_ref()
+            let val = config
+                .notifications
+                .as_ref()
                 .and_then(|n| n.telegram.as_ref())
                 .map(|t| t.bot_token.as_str())
                 .unwrap_or("");
             println!("{}", mask_secret("telegram.bot_token", val));
         }
         Some("telegram.chat_id") => {
-            let val = config.notifications.as_ref()
+            let val = config
+                .notifications
+                .as_ref()
                 .and_then(|n| n.telegram.as_ref())
                 .map(|t| t.chat_id.as_str())
                 .unwrap_or("");
@@ -233,7 +259,11 @@ pub async fn run_get(key: Option<String>) -> Result<(), VelosError> {
 }
 
 fn ai_field(config: &GlobalConfig, f: impl Fn(&AiConfigToml) -> &str) -> String {
-    config.ai.as_ref().map(|a| f(a).to_string()).unwrap_or_default()
+    config
+        .ai
+        .as_ref()
+        .map(|a| f(a).to_string())
+        .unwrap_or_default()
 }
 
 /// Mask sensitive values (api_key, bot_token) for display.

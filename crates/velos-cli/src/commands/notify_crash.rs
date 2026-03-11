@@ -1,8 +1,6 @@
 use std::path::Path;
 
-use velos_ai::analyzer::{
-    self, CrashContext, CrashRecord, CrashStatus, SourceSnippet,
-};
+use velos_ai::analyzer::{self, CrashContext, CrashRecord, CrashStatus, SourceSnippet};
 use velos_ai::i18n::I18n;
 use velos_ai::provider::create_provider;
 use velos_ai::types::AiConfig;
@@ -83,8 +81,19 @@ pub async fn run(process_name: String, exit_code: i32) -> Result<(), VelosError>
     let telegram = config.notifications.and_then(|n| n.telegram);
     if let Some(t) = telegram {
         if !t.bot_token.is_empty() && !t.chat_id.is_empty() {
-            let text = build_telegram_message(&i18n, &process_name, exit_code, &hostname, &timestamp, &log_lines, &ai_analysis, ai_configured);
-            if let Err(e) = send_telegram_with_buttons(&t.bot_token, &t.chat_id, &text, &crash_id, &i18n) {
+            let text = build_telegram_message(
+                &i18n,
+                &process_name,
+                exit_code,
+                &hostname,
+                &timestamp,
+                &log_lines,
+                &ai_analysis,
+                ai_configured,
+            );
+            if let Err(e) =
+                send_telegram_with_buttons(&t.bot_token, &t.chat_id, &text, &crash_id, &i18n)
+            {
                 eprintln!("[velos] Telegram send error: {e}");
             }
         }
@@ -152,10 +161,14 @@ fn build_telegram_message(
          <b>{}:</b> <code>{}</code>\n\
          <b>{}:</b> {}",
         h(i18n.get("crash.title")),
-        h(i18n.get("crash.name")), h(process_name),
-        h(i18n.get("crash.exit_code")), exit_code,
-        h(i18n.get("crash.host")), h(hostname),
-        h(i18n.get("crash.time")), h(timestamp),
+        h(i18n.get("crash.name")),
+        h(process_name),
+        h(i18n.get("crash.exit_code")),
+        exit_code,
+        h(i18n.get("crash.host")),
+        h(hostname),
+        h(i18n.get("crash.time")),
+        h(timestamp),
     );
 
     if !log_lines.is_empty() {
@@ -185,10 +198,7 @@ fn build_telegram_message(
             ));
         }
         None if !ai_configured => {
-            text.push_str(&format!(
-                "\n\n<i>{}</i>",
-                h(i18n.get("crash.no_analysis")),
-            ));
+            text.push_str(&format!("\n\n<i>{}</i>", h(i18n.get("crash.no_analysis")),));
         }
         None => {
             // AI configured but analysis failed — don't show misleading "not configured" message

@@ -1,13 +1,15 @@
-use std::path::Path;
 use serde_json::json;
+use std::path::Path;
 
-use super::{ToolExecutor, safe_resolve, required_str};
+use super::{required_str, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 pub struct CreateFile;
 
 impl ToolExecutor for CreateFile {
-    fn name(&self) -> &str { "create_file" }
+    fn name(&self) -> &str {
+        "create_file"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {
@@ -36,7 +38,9 @@ impl ToolExecutor for CreateFile {
         let path = safe_resolve(&path_str, cwd)?;
 
         if path.exists() {
-            return Err(format!("{path_str} already exists. Use edit_file to modify it."));
+            return Err(format!(
+                "{path_str} already exists. Use edit_file to modify it."
+            ));
         }
 
         if let Some(parent) = path.parent() {
@@ -44,8 +48,7 @@ impl ToolExecutor for CreateFile {
                 .map_err(|e| format!("cannot create directories: {e}"))?;
         }
 
-        std::fs::write(&path, &content)
-            .map_err(|e| format!("cannot write file: {e}"))?;
+        std::fs::write(&path, &content).map_err(|e| format!("cannot write file: {e}"))?;
 
         Ok(format!("Created {path_str} ({} bytes)", content.len()))
     }

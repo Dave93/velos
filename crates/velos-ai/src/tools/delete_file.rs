@@ -1,13 +1,15 @@
-use std::path::Path;
 use serde_json::json;
+use std::path::Path;
 
-use super::{ToolExecutor, safe_resolve, required_str};
+use super::{required_str, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 pub struct DeleteFile;
 
 impl ToolExecutor for DeleteFile {
-    fn name(&self) -> &str { "delete_file" }
+    fn name(&self) -> &str {
+        "delete_file"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {
@@ -37,8 +39,7 @@ impl ToolExecutor for DeleteFile {
             return Err(format!("{path_str} is a directory, not a file."));
         }
 
-        std::fs::remove_file(&path)
-            .map_err(|e| format!("cannot delete file: {e}"))?;
+        std::fs::remove_file(&path).map_err(|e| format!("cannot delete file: {e}"))?;
 
         Ok(format!("Deleted {path_str}"))
     }

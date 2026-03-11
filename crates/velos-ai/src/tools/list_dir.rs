@@ -1,7 +1,7 @@
-use std::path::Path;
 use serde_json::json;
+use std::path::Path;
 
-use super::{ToolExecutor, safe_resolve, optional_str, optional_u64};
+use super::{optional_str, optional_u64, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 const MAX_ENTRIES: usize = 500;
@@ -9,7 +9,9 @@ const MAX_ENTRIES: usize = 500;
 pub struct ListDir;
 
 impl ToolExecutor for ListDir {
-    fn name(&self) -> &str { "list_dir" }
+    fn name(&self) -> &str {
+        "list_dir"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {
@@ -57,13 +59,10 @@ impl ToolExecutor for ListDir {
             }
             let path = entry.path();
             // Skip hidden dirs content
-            if path
-                .components()
-                .any(|c| {
-                    let s = c.as_os_str().to_string_lossy();
-                    s.starts_with('.') && s.len() > 1
-                })
-                && path != dir
+            if path.components().any(|c| {
+                let s = c.as_os_str().to_string_lossy();
+                s.starts_with('.') && s.len() > 1
+            }) && path != dir
             {
                 continue;
             }
@@ -82,10 +81,7 @@ impl ToolExecutor for ListDir {
             }
 
             let indent = "  ".repeat(entry.depth().saturating_sub(1));
-            let name = rel
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy();
+            let name = rel.file_name().unwrap_or_default().to_string_lossy();
             if entry.file_type().is_dir() {
                 entries.push(format!("{indent}{name}/"));
             } else {

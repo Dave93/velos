@@ -73,11 +73,9 @@ impl Agent {
             eprintln!("[velos-ai] iteration {iterations}/{}", self.max_iterations);
 
             // Send to AI
-            let response = self.provider.chat_with_tools(
-                &messages,
-                &self.system,
-                &tool_defs,
-            )?;
+            let response = self
+                .provider
+                .chat_with_tools(&messages, &self.system, &tool_defs)?;
 
             // Track usage
             total_usage.input_tokens += response.usage.input_tokens;
@@ -121,22 +119,23 @@ impl Agent {
             let mut tool_results = Vec::new();
             for block in &tool_use_blocks {
                 if let ContentBlock::ToolUse { id, name, input } = block {
-                    eprintln!("[velos-ai] tool: {name}({})", truncate_log(&input.to_string(), 100));
+                    eprintln!(
+                        "[velos-ai] tool: {name}({})",
+                        truncate_log(&input.to_string(), 100)
+                    );
                     tool_calls_total += 1;
 
-                    let (content, is_error) = match self.tools.execute(name, input.clone(), &self.cwd) {
-                        Ok(output) => {
-                            eprintln!(
-                                "[velos-ai]   -> ok ({} bytes)",
-                                output.len()
-                            );
-                            (output, false)
-                        }
-                        Err(err) => {
-                            eprintln!("[velos-ai]   -> error: {err}");
-                            (err, true)
-                        }
-                    };
+                    let (content, is_error) =
+                        match self.tools.execute(name, input.clone(), &self.cwd) {
+                            Ok(output) => {
+                                eprintln!("[velos-ai]   -> ok ({} bytes)", output.len());
+                                (output, false)
+                            }
+                            Err(err) => {
+                                eprintln!("[velos-ai]   -> error: {err}");
+                                (err, true)
+                            }
+                        };
 
                     tool_results.push(ContentBlock::ToolResult {
                         tool_use_id: id.clone(),
@@ -161,7 +160,7 @@ impl Agent {
         eprintln!("[velos-ai] requesting final summary after max iterations");
         messages.push(Message::user(
             "You have reached the maximum number of iterations. Please provide your final summary \
-             of what you found and any changes you made."
+             of what you found and any changes you made.",
         ));
 
         let final_resp = self.provider.chat(&messages, &self.system)?;
@@ -228,7 +227,9 @@ mod tests {
             let mut resps = self.responses.lock().unwrap();
             if resps.is_empty() {
                 return Ok(AssistantResponse {
-                    content: vec![ContentBlock::Text { text: "done".into() }],
+                    content: vec![ContentBlock::Text {
+                        text: "done".into(),
+                    }],
                     stop_reason: StopReason::EndTurn,
                     usage: Usage::default(),
                 });
@@ -279,7 +280,10 @@ mod tests {
                     input: serde_json::json!({"path": "test.txt"}),
                 }],
                 stop_reason: StopReason::ToolUse,
-                usage: Usage { input_tokens: 50, output_tokens: 10 },
+                usage: Usage {
+                    input_tokens: 50,
+                    output_tokens: 10,
+                },
             },
             // Second response: final text
             AssistantResponse {
@@ -287,7 +291,10 @@ mod tests {
                     text: "The file contains hello world.".into(),
                 }],
                 stop_reason: StopReason::EndTurn,
-                usage: Usage { input_tokens: 80, output_tokens: 15 },
+                usage: Usage {
+                    input_tokens: 80,
+                    output_tokens: 15,
+                },
             },
         ]);
 
@@ -319,7 +326,10 @@ mod tests {
                     input: serde_json::json!({}),
                 }],
                 stop_reason: StopReason::ToolUse,
-                usage: Usage { input_tokens: 10, output_tokens: 5 },
+                usage: Usage {
+                    input_tokens: 10,
+                    output_tokens: 5,
+                },
             })
             .collect();
 

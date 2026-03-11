@@ -34,7 +34,10 @@ fn en() -> &'static HashMap<&'static str, &'static str> {
         m.insert("crash.time", "Time");
         m.insert("crash.logs", "Last logs");
         m.insert("crash.analysis_header", "AI Analysis");
-        m.insert("crash.no_analysis", "AI analysis not configured. Set up with: velos config set ai.provider anthropic");
+        m.insert(
+            "crash.no_analysis",
+            "AI analysis not configured. Set up with: velos config set ai.provider anthropic",
+        );
         m.insert("crash.btn_fix", "Fix");
         m.insert("crash.btn_ignore", "Ignore");
         // Fix flow

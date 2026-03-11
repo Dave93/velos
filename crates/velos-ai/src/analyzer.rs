@@ -124,7 +124,12 @@ pub fn extract_source_refs(logs: &[String]) -> Vec<(String, u32)> {
 }
 
 /// Read source code around a given line, returning context lines.
-pub fn read_source_context(file: &str, line: u32, cwd: &Path, context: u32) -> Option<SourceSnippet> {
+pub fn read_source_context(
+    file: &str,
+    line: u32,
+    cwd: &Path,
+    context: u32,
+) -> Option<SourceSnippet> {
     let path = if Path::new(file).is_absolute() {
         PathBuf::from(file)
     } else {
@@ -184,7 +189,10 @@ pub fn build_analysis_prompt(ctx: &CrashContext) -> String {
     if !ctx.source_snippets.is_empty() {
         prompt.push_str("## Relevant Source Code\n\n");
         for snippet in &ctx.source_snippets {
-            prompt.push_str(&format!("### {} (line {})\n```\n{}\n```\n\n", snippet.file, snippet.line, snippet.content));
+            prompt.push_str(&format!(
+                "### {} (line {})\n```\n{}\n```\n\n",
+                snippet.file, snippet.line, snippet.content
+            ));
         }
     }
 
@@ -217,7 +225,9 @@ mod tests {
             "    at processTicksAndRejections (node:internal/process/task_queues:95:5)".into(),
         ];
         let refs = extract_source_refs(&logs);
-        assert!(refs.iter().any(|(f, l)| f == "/app/src/routes/api.ts" && *l == 42));
+        assert!(refs
+            .iter()
+            .any(|(f, l)| f == "/app/src/routes/api.ts" && *l == 42));
     }
 
     #[test]

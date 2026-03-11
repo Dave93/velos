@@ -67,7 +67,6 @@ impl SortColumn {
             Self::Restarts => Self::Name,
         }
     }
-
 }
 
 struct Notification {
@@ -140,10 +139,7 @@ pub async fn run() -> Result<(), VelosError> {
         sort_asc: true,
         signal_selected: 0,
         notifications: Vec::new(),
-        prev_restarts: procs
-            .iter()
-            .map(|p| (p.id, p.restart_count))
-            .collect(),
+        prev_restarts: procs.iter().map(|p| (p.id, p.restart_count)).collect(),
     };
 
     enable_raw_mode().map_err(|e| VelosError::ProtocolError(format!("terminal: {e}")))?;
@@ -240,9 +236,7 @@ async fn run_loop(
                     },
                     Mode::Normal => match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => state.should_quit = true,
-                        KeyCode::Char('c')
-                            if key.modifiers.contains(KeyModifiers::CONTROL) =>
-                        {
+                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             state.should_quit = true;
                         }
                         KeyCode::Up | KeyCode::Char('k') => {
@@ -339,10 +333,7 @@ async fn run_loop(
                         }
                     }
                 }
-                state.prev_restarts = procs
-                    .iter()
-                    .map(|p| (p.id, p.restart_count))
-                    .collect();
+                state.prev_restarts = procs.iter().map(|p| (p.id, p.restart_count)).collect();
 
                 state.processes = procs
                     .iter()
@@ -383,9 +374,7 @@ async fn run_loop(
             }
 
             // Auto-fetch logs for selected process
-            let selected_id = filtered_processes(state)
-                .get(state.selected)
-                .map(|p| p.id);
+            let selected_id = filtered_processes(state).get(state.selected).map(|p| p.id);
             if let Some(id) = selected_id {
                 if let Ok(entries) = client.logs(id, 50).await {
                     state.logs = entries
@@ -415,7 +404,11 @@ fn filtered_processes(state: &AppState) -> Vec<&ProcessRow> {
 
     match state.sort_by {
         SortColumn::Name => procs.sort_by(|a, b| a.name.cmp(&b.name)),
-        SortColumn::Cpu => procs.sort_by(|a, b| b.cpu_percent.partial_cmp(&a.cpu_percent).unwrap_or(std::cmp::Ordering::Equal)),
+        SortColumn::Cpu => procs.sort_by(|a, b| {
+            b.cpu_percent
+                .partial_cmp(&a.cpu_percent)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }),
         SortColumn::Mem => procs.sort_by(|a, b| b.memory.cmp(&a.memory)),
         SortColumn::Uptime => procs.sort_by(|a, b| b.uptime.cmp(&a.uptime)),
         SortColumn::Restarts => procs.sort_by(|a, b| b.restarts.cmp(&a.restarts)),
@@ -470,18 +463,35 @@ fn draw_header(f: &mut ratatui::Frame, state: &AppState, area: Rect) {
     let max_uptime = state.processes.iter().map(|p| p.uptime).max().unwrap_or(0);
 
     let header = Line::from(vec![
-        Span::styled(" Velos Monitor ", Style::default().fg(cat::LAVENDER).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " Velos Monitor ",
+            Style::default()
+                .fg(cat::LAVENDER)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("| ", Style::default().fg(cat::SURFACE2)),
-        Span::styled(format!("{} ", state.processes.len()), Style::default().fg(cat::TEXT).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            format!("{} ", state.processes.len()),
+            Style::default().fg(cat::TEXT).add_modifier(Modifier::BOLD),
+        ),
         Span::styled("procs ", Style::default().fg(cat::SUBTEXT0)),
         Span::styled("| ", Style::default().fg(cat::SURFACE2)),
         Span::styled("CPU ", Style::default().fg(cat::SUBTEXT0)),
-        Span::styled(format!("{:.1}% ", total_cpu), Style::default().fg(cat::PEACH).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            format!("{:.1}% ", total_cpu),
+            Style::default().fg(cat::PEACH).add_modifier(Modifier::BOLD),
+        ),
         Span::styled("| ", Style::default().fg(cat::SURFACE2)),
         Span::styled("MEM ", Style::default().fg(cat::SUBTEXT0)),
-        Span::styled(format!("{} ", format_bytes(total_mem)), Style::default().fg(cat::BLUE).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            format!("{} ", format_bytes(total_mem)),
+            Style::default().fg(cat::BLUE).add_modifier(Modifier::BOLD),
+        ),
         Span::styled("| ", Style::default().fg(cat::SURFACE2)),
-        Span::styled(format!("up {} ", format_uptime(max_uptime)), Style::default().fg(cat::GREEN)),
+        Span::styled(
+            format!("up {} ", format_uptime(max_uptime)),
+            Style::default().fg(cat::GREEN),
+        ),
     ]);
     let widget = Paragraph::new(header).style(Style::default().bg(cat::SURFACE0));
     f.render_widget(widget, area);
@@ -546,13 +556,32 @@ fn draw_process_table(f: &mut ratatui::Frame, state: &AppState, area: Rect) {
 
             Row::new(vec![
                 Cell::from(format!("{}{}", sel_marker, p.id)),
-                Cell::from(p.name.clone()).style(Style::default().fg(cat::TEXT).add_modifier(if is_selected { Modifier::BOLD } else { Modifier::empty() })),
-                Cell::from(if p.pid > 0 { p.pid.to_string() } else { "-".to_string() }).style(Style::default().fg(cat::SUBTEXT0)),
-                Cell::from(p.status.clone()).style(Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
+                Cell::from(p.name.clone()).style(Style::default().fg(cat::TEXT).add_modifier(
+                    if is_selected {
+                        Modifier::BOLD
+                    } else {
+                        Modifier::empty()
+                    },
+                )),
+                Cell::from(if p.pid > 0 {
+                    p.pid.to_string()
+                } else {
+                    "-".to_string()
+                })
+                .style(Style::default().fg(cat::SUBTEXT0)),
+                Cell::from(p.status.clone()).style(
+                    Style::default()
+                        .fg(status_color)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Cell::from(cpu_bar),
                 Cell::from(format_bytes(p.memory)).style(Style::default().fg(cat::BLUE)),
                 Cell::from(format_uptime(p.uptime)).style(Style::default().fg(cat::SUBTEXT1)),
-                Cell::from(p.restarts.to_string()).style(Style::default().fg(if p.restarts > 0 { cat::YELLOW } else { cat::SUBTEXT0 })),
+                Cell::from(p.restarts.to_string()).style(Style::default().fg(if p.restarts > 0 {
+                    cat::YELLOW
+                } else {
+                    cat::SUBTEXT0
+                })),
             ])
             .style(Style::default().bg(row_bg))
         })
@@ -634,10 +663,7 @@ fn draw_graphs(f: &mut ratatui::Frame, state: &AppState, area: Rect) {
         .and_then(|idx| state.mem_history.get(idx))
         .cloned()
         .unwrap_or_default();
-    let mem_val = procs
-        .get(state.selected)
-        .map(|p| p.memory)
-        .unwrap_or(0);
+    let mem_val = procs.get(state.selected).map(|p| p.memory).unwrap_or(0);
     let mem_spark = Sparkline::default()
         .block(
             Block::default()
@@ -679,11 +705,16 @@ fn draw_logs(f: &mut ratatui::Frame, state: &AppState, area: Rect) {
             Line::from(vec![
                 Span::styled(
                     format!("[{tag}] "),
-                    Style::default()
-                        .fg(tag_color)
-                        .add_modifier(Modifier::BOLD),
+                    Style::default().fg(tag_color).add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(&l.message, Style::default().fg(if l.stream == "err" { cat::RED } else { cat::SUBTEXT1 })),
+                Span::styled(
+                    &l.message,
+                    Style::default().fg(if l.stream == "err" {
+                        cat::RED
+                    } else {
+                        cat::SUBTEXT1
+                    }),
+                ),
             ])
         })
         .collect();
@@ -706,10 +737,7 @@ fn draw_logs(f: &mut ratatui::Frame, state: &AppState, area: Rect) {
                         .fg(cat::LAVENDER)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    scroll_indicator,
-                    Style::default().fg(cat::OVERLAY0),
-                ),
+                Span::styled(scroll_indicator, Style::default().fg(cat::OVERLAY0)),
             ])
             .style(Style::default().bg(cat::BASE)),
     );
@@ -719,25 +747,49 @@ fn draw_logs(f: &mut ratatui::Frame, state: &AppState, area: Rect) {
 fn draw_footer(f: &mut ratatui::Frame, state: &AppState, area: Rect) {
     let footer = if state.mode == Mode::Filter {
         Line::from(vec![
-            Span::styled(" Filter: ", Style::default().fg(cat::PEACH).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " Filter: ",
+                Style::default().fg(cat::PEACH).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(&state.filter_text, Style::default().fg(cat::TEXT)),
             Span::styled("\u{2588}", Style::default().fg(cat::LAVENDER)),
-            Span::styled("  (Esc cancel, Enter apply)", Style::default().fg(cat::OVERLAY0)),
+            Span::styled(
+                "  (Esc cancel, Enter apply)",
+                Style::default().fg(cat::OVERLAY0),
+            ),
         ])
     } else {
         let mut spans = Vec::new();
         spans.push(Span::raw(" "));
         let keys: &[(&str, &str)] = &[
-            ("q", "quit"), ("\u{2191}\u{2193}/jk", "select"), ("/", "filter"),
-            ("Tab", "sort"), ("Enter", "detail"), ("r", "restart"),
-            ("s", "stop"), ("d", "delete"), ("K", "signal"), ("?", "help"),
+            ("q", "quit"),
+            ("\u{2191}\u{2193}/jk", "select"),
+            ("/", "filter"),
+            ("Tab", "sort"),
+            ("Enter", "detail"),
+            ("r", "restart"),
+            ("s", "stop"),
+            ("d", "delete"),
+            ("K", "signal"),
+            ("?", "help"),
         ];
         for (i, (key, desc)) in keys.iter().enumerate() {
             if i > 0 {
-                spans.push(Span::styled(" \u{2502} ", Style::default().fg(cat::SURFACE2)));
+                spans.push(Span::styled(
+                    " \u{2502} ",
+                    Style::default().fg(cat::SURFACE2),
+                ));
             }
-            spans.push(Span::styled(*key, Style::default().fg(cat::LAVENDER).add_modifier(Modifier::BOLD)));
-            spans.push(Span::styled(format!(" {desc}"), Style::default().fg(cat::OVERLAY0)));
+            spans.push(Span::styled(
+                *key,
+                Style::default()
+                    .fg(cat::LAVENDER)
+                    .add_modifier(Modifier::BOLD),
+            ));
+            spans.push(Span::styled(
+                format!(" {desc}"),
+                Style::default().fg(cat::OVERLAY0),
+            ));
         }
         Line::from(spans)
     };
@@ -758,17 +810,37 @@ fn draw_detail_panel(f: &mut ratatui::Frame, state: &AppState) {
     let lines = vec![
         detail_line("Name", &proc.name, cat::TEXT),
         detail_line("ID", &proc.id.to_string(), cat::TEXT),
-        detail_line("PID", &if proc.pid > 0 { proc.pid.to_string() } else { "-".into() }, cat::TEXT),
-        detail_line("Status", &proc.status, match proc.status.as_str() {
-            "running" => cat::GREEN,
-            "errored" => cat::RED,
-            "stopped" => cat::YELLOW,
-            _ => cat::TEXT,
-        }),
+        detail_line(
+            "PID",
+            &if proc.pid > 0 {
+                proc.pid.to_string()
+            } else {
+                "-".into()
+            },
+            cat::TEXT,
+        ),
+        detail_line(
+            "Status",
+            &proc.status,
+            match proc.status.as_str() {
+                "running" => cat::GREEN,
+                "errored" => cat::RED,
+                "stopped" => cat::YELLOW,
+                _ => cat::TEXT,
+            },
+        ),
         detail_line("CPU", &format!("{:.1}%", proc.cpu_percent), cat::PEACH),
         detail_line("Memory", &format_bytes(proc.memory), cat::BLUE),
         detail_line("Uptime", &format_uptime(proc.uptime), cat::GREEN),
-        detail_line("Restarts", &proc.restarts.to_string(), if proc.restarts > 0 { cat::YELLOW } else { cat::TEXT }),
+        detail_line(
+            "Restarts",
+            &proc.restarts.to_string(),
+            if proc.restarts > 0 {
+                cat::YELLOW
+            } else {
+                cat::TEXT
+            },
+        ),
         Line::from(""),
         Line::from(Span::styled(
             " Press Esc or Enter to close ",
@@ -821,9 +893,7 @@ fn draw_signal_popup(f: &mut ratatui::Frame, state: &AppState) {
             .border_style(Style::default().fg(cat::PEACH))
             .title(Span::styled(
                 " Send Signal ",
-                Style::default()
-                    .fg(cat::PEACH)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(cat::PEACH).add_modifier(Modifier::BOLD),
             ))
             .style(Style::default().bg(cat::BASE)),
     );
@@ -860,9 +930,7 @@ fn draw_help_popup(f: &mut ratatui::Frame) {
             .border_style(Style::default().fg(cat::MAUVE))
             .title(Span::styled(
                 " Keybindings ",
-                Style::default()
-                    .fg(cat::MAUVE)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(cat::MAUVE).add_modifier(Modifier::BOLD),
             ))
             .style(Style::default().bg(cat::BASE)),
     );
@@ -880,7 +948,10 @@ fn draw_notifications(f: &mut ratatui::Frame, state: &AppState) {
         f.render_widget(Clear, area);
         let popup = Paragraph::new(Line::from(vec![
             Span::styled(" \u{26a0} ", Style::default().fg(cat::YELLOW)),
-            Span::styled(&notif.message, Style::default().fg(cat::RED).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                &notif.message,
+                Style::default().fg(cat::RED).add_modifier(Modifier::BOLD),
+            ),
         ]))
         .block(
             Block::default()

@@ -20,7 +20,9 @@ pub async fn run(process_name: String) -> Result<(), VelosError> {
 
     // Skip if process already crashed — crash notification handles that
     if is_process_errored(&process_name).await {
-        eprintln!("[velos] skipping error notification for '{process_name}' — process already crashed");
+        eprintln!(
+            "[velos] skipping error notification for '{process_name}' — process already crashed"
+        );
         return Ok(());
     }
 
@@ -94,13 +96,9 @@ pub async fn run(process_name: String) -> Result<(), VelosError> {
                 &log_lines,
                 &ai_analysis,
             );
-            if let Err(e) = send_telegram_with_buttons(
-                &t.bot_token,
-                &t.chat_id,
-                &text,
-                &crash_id,
-                &i18n,
-            ) {
+            if let Err(e) =
+                send_telegram_with_buttons(&t.bot_token, &t.chat_id, &text, &crash_id, &i18n)
+            {
                 eprintln!("[velos] Telegram send error: {e}");
             }
         }

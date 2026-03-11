@@ -1,7 +1,7 @@
-use std::path::Path;
 use serde_json::json;
+use std::path::Path;
 
-use super::{ToolExecutor, safe_resolve, required_str, optional_u64};
+use super::{optional_u64, required_str, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 const MAX_SIZE: u64 = 100 * 1024; // 100KB
@@ -9,7 +9,9 @@ const MAX_SIZE: u64 = 100 * 1024; // 100KB
 pub struct ReadFile;
 
 impl ToolExecutor for ReadFile {
-    fn name(&self) -> &str { "read_file" }
+    fn name(&self) -> &str {
+        "read_file"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {
@@ -40,18 +42,18 @@ impl ToolExecutor for ReadFile {
         let path_str = required_str(&input, "path")?;
         let path = safe_resolve(&path_str, cwd)?;
 
-        let metadata = std::fs::metadata(&path)
-            .map_err(|e| format!("cannot read file: {e}"))?;
+        let metadata = std::fs::metadata(&path).map_err(|e| format!("cannot read file: {e}"))?;
 
         if metadata.len() > MAX_SIZE {
             return Err(format!(
                 "file too large: {} bytes (max {}). Use offset/limit to read a portion.",
-                metadata.len(), MAX_SIZE
+                metadata.len(),
+                MAX_SIZE
             ));
         }
 
-        let content = std::fs::read_to_string(&path)
-            .map_err(|e| format!("cannot read file: {e}"))?;
+        let content =
+            std::fs::read_to_string(&path).map_err(|e| format!("cannot read file: {e}"))?;
 
         let lines: Vec<&str> = content.lines().collect();
         let offset = optional_u64(&input, "offset").unwrap_or(1).max(1) as usize;

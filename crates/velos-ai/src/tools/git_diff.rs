@@ -1,14 +1,16 @@
+use serde_json::json;
 use std::path::Path;
 use std::process::Command;
-use serde_json::json;
 
-use super::{ToolExecutor, safe_resolve, optional_str};
+use super::{optional_str, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 pub struct GitDiff;
 
 impl ToolExecutor for GitDiff {
-    fn name(&self) -> &str { "git_diff" }
+    fn name(&self) -> &str {
+        "git_diff"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {

@@ -21,9 +21,19 @@ pub enum Role {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ContentBlock {
-    Text { text: String },
-    ToolUse { id: String, name: String, input: serde_json::Value },
-    ToolResult { tool_use_id: String, content: String, is_error: bool },
+    Text {
+        text: String,
+    },
+    ToolUse {
+        id: String,
+        name: String,
+        input: serde_json::Value,
+    },
+    ToolResult {
+        tool_use_id: String,
+        content: String,
+        is_error: bool,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -80,8 +90,12 @@ pub struct AiConfig {
     pub auto_fix: bool,
 }
 
-fn default_max_iterations() -> u32 { 30 }
-fn default_true() -> bool { true }
+fn default_max_iterations() -> u32 {
+    30
+}
+fn default_true() -> bool {
+    true
+}
 
 // ---------------------------------------------------------------------------
 // Convenience constructors
@@ -102,7 +116,11 @@ impl Message {
         }
     }
 
-    pub fn tool_result(tool_use_id: impl Into<String>, content: impl Into<String>, is_error: bool) -> Self {
+    pub fn tool_result(
+        tool_use_id: impl Into<String>,
+        content: impl Into<String>,
+        is_error: bool,
+    ) -> Self {
         Self {
             role: Role::Tool,
             content: vec![ContentBlock::ToolResult {
@@ -117,14 +135,21 @@ impl Message {
 impl AssistantResponse {
     /// Extract all text content blocks concatenated.
     pub fn text(&self) -> String {
-        self.content.iter().filter_map(|b| match b {
-            ContentBlock::Text { text } => Some(text.as_str()),
-            _ => None,
-        }).collect::<Vec<_>>().join("")
+        self.content
+            .iter()
+            .filter_map(|b| match b {
+                ContentBlock::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("")
     }
 
     /// Extract all tool use blocks.
     pub fn tool_calls(&self) -> Vec<&ContentBlock> {
-        self.content.iter().filter(|b| matches!(b, ContentBlock::ToolUse { .. })).collect()
+        self.content
+            .iter()
+            .filter(|b| matches!(b, ContentBlock::ToolUse { .. }))
+            .collect()
     }
 }

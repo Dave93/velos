@@ -65,7 +65,10 @@ fn start_telegram_poller() -> Option<std::process::Child> {
         .spawn()
     {
         Ok(child) => {
-            eprintln!("[velos-daemon] Telegram poller started (pid {})", child.id());
+            eprintln!(
+                "[velos-daemon] Telegram poller started (pid {})",
+                child.id()
+            );
             Some(child)
         }
         Err(e) => {

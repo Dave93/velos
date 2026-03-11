@@ -1,12 +1,12 @@
-pub mod read_file;
-pub mod edit_file;
 pub mod create_file;
 pub mod delete_file;
-pub mod grep;
-pub mod glob;
-pub mod list_dir;
-pub mod run_command;
+pub mod edit_file;
 pub mod git_diff;
+pub mod glob;
+pub mod grep;
+pub mod list_dir;
+pub mod read_file;
+pub mod run_command;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -100,10 +100,7 @@ pub fn safe_resolve(path_str: &str, cwd: &Path) -> Result<PathBuf, String> {
             .canonicalize()
             .map_err(|e| format!("cannot resolve path: {e}"))?;
         if !canon.starts_with(&canon_cwd) {
-            return Err(format!(
-                "path escapes project directory: {}",
-                path_str
-            ));
+            return Err(format!("path escapes project directory: {}", path_str));
         }
         return Ok(canon);
     }
@@ -115,10 +112,7 @@ pub fn safe_resolve(path_str: &str, cwd: &Path) -> Result<PathBuf, String> {
                 .canonicalize()
                 .map_err(|e| format!("cannot resolve parent: {e}"))?;
             if !canon_parent.starts_with(&canon_cwd) {
-                return Err(format!(
-                    "path escapes project directory: {}",
-                    path_str
-                ));
+                return Err(format!("path escapes project directory: {}", path_str));
             }
             return Ok(canon_parent.join(resolved.file_name().unwrap_or_default()));
         }

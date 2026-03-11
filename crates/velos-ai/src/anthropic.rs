@@ -100,9 +100,7 @@ impl AnthropicProvider {
 
         let mut content = Vec::new();
         for block in content_arr {
-            let block_type = block["type"]
-                .as_str()
-                .unwrap_or("");
+            let block_type = block["type"].as_str().unwrap_or("");
             match block_type {
                 "text" => {
                     let text = block["text"].as_str().unwrap_or("").to_string();
@@ -145,7 +143,8 @@ impl AnthropicProvider {
                 .build(),
         );
 
-        let resp = agent.post(&url)
+        let resp = agent
+            .post(&url)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", API_VERSION)
             .header("content-type", "application/json")
@@ -242,10 +241,7 @@ mod tests {
         };
         let provider = AnthropicProvider::new(&config).unwrap();
 
-        let messages = vec![
-            Message::user("Hello"),
-            Message::assistant("Hi there"),
-        ];
+        let messages = vec![Message::user("Hello"), Message::assistant("Hi there")];
         let result = provider.build_messages(&messages);
         assert_eq!(result.len(), 2);
         assert_eq!(result[0]["role"], "user");

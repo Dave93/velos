@@ -108,7 +108,9 @@ fn poll_updates(bot_token: &str, offset: i64) -> Result<Vec<Update>, VelosError>
         .map_err(|e| VelosError::ProtocolError(format!("Telegram parse: {e}")))?;
 
     if !body.ok {
-        return Err(VelosError::ProtocolError("Telegram API returned ok=false".into()));
+        return Err(VelosError::ProtocolError(
+            "Telegram API returned ok=false".into(),
+        ));
     }
 
     Ok(body.result.unwrap_or_default())
@@ -130,15 +132,13 @@ fn handle_callback(
     // Answer callback to remove "loading" spinner in Telegram
     let _ = answer_callback(&telegram.bot_token, &cb.id, "");
 
-    let chat_id = cb
-        .message
-        .as_ref()
-        .map(|m| m.chat.id)
-        .unwrap_or(0);
+    let chat_id = cb.message.as_ref().map(|m| m.chat.id).unwrap_or(0);
     let message_id = cb.message.as_ref().and_then(|m| m.message_id);
 
     if let Some(crash_id) = data.strip_prefix("fix:") {
-        handle_fix(telegram, ai_config, &i18n, language, crash_id, chat_id, message_id);
+        handle_fix(
+            telegram, ai_config, &i18n, language, crash_id, chat_id, message_id,
+        );
     } else if let Some(crash_id) = data.strip_prefix("ignore:") {
         handle_ignore(telegram, &i18n, crash_id, chat_id, message_id);
     }
@@ -205,12 +205,18 @@ fn handle_fix(
         }
     };
 
-    eprintln!("[velos] spawning fix for {crash_id}, logs: {}", log_path.display());
+    eprintln!(
+        "[velos] spawning fix for {crash_id}, logs: {}",
+        log_path.display()
+    );
 
     let stderr_file = match std::fs::File::create(&log_path) {
         Ok(f) => f,
         Err(_) => {
-            let _ = std::fs::OpenOptions::new().append(true).open(&log_path).unwrap();
+            let _ = std::fs::OpenOptions::new()
+                .append(true)
+                .open(&log_path)
+                .unwrap();
             return;
         }
     };
@@ -218,7 +224,9 @@ fn handle_fix(
     let child = std::process::Command::new(&exe)
         .args(["ai", "fix", crash_id])
         .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::from(log_file.try_clone().unwrap_or_else(|_| log_file)))
+        .stdout(std::process::Stdio::from(
+            log_file.try_clone().unwrap_or_else(|_| log_file),
+        ))
         .stderr(std::process::Stdio::from(stderr_file))
         .spawn();
 
@@ -299,7 +307,11 @@ fn handle_ignore(
             let _ = send_message(
                 &telegram.bot_token,
                 chat_id,
-                &format!("\u{1F6AB} Crash <code>{}</code> — {}", crash_id, i18n.get("crash.btn_ignore").to_lowercase()),
+                &format!(
+                    "\u{1F6AB} Crash <code>{}</code> — {}",
+                    crash_id,
+                    i18n.get("crash.btn_ignore").to_lowercase()
+                ),
             );
         }
         Err(_) => {

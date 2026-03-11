@@ -36,8 +36,9 @@ pub async fn run_fix(crash_id: String) -> Result<(), VelosError> {
         .unwrap_or("en");
     let i18n = I18n::new(language);
 
-    let mut record = CrashRecord::load(&crash_id)
-        .map_err(|e| VelosError::ProtocolError(format!("{}: {e}", i18n.get("fix.no_crash_record"))))?;
+    let mut record = CrashRecord::load(&crash_id).map_err(|e| {
+        VelosError::ProtocolError(format!("{}: {e}", i18n.get("fix.no_crash_record")))
+    })?;
 
     println!("{}", i18n.get("fix.started"));
 
@@ -78,7 +79,11 @@ pub async fn run_fix(crash_id: String) -> Result<(), VelosError> {
                 i18n.get("fix.tokens"),
                 result.total_usage.input_tokens + result.total_usage.output_tokens
             );
-            println!("\n{}:\n{}", i18n.get("fix.changes_summary"), result.final_text);
+            println!(
+                "\n{}:\n{}",
+                i18n.get("fix.changes_summary"),
+                result.final_text
+            );
 
             // Auto-restart the process after successful fix
             restart_process(&record.process_name).await;
@@ -215,7 +220,9 @@ pub async fn run_analyze(crash_id: String) -> Result<(), VelosError> {
             println!("\n{analysis}");
         }
         Err(e) => {
-            return Err(VelosError::ProtocolError(format!("AI analysis failed: {e}")));
+            return Err(VelosError::ProtocolError(format!(
+                "AI analysis failed: {e}"
+            )));
         }
     }
 

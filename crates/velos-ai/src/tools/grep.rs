@@ -1,7 +1,7 @@
-use std::path::Path;
 use serde_json::json;
+use std::path::Path;
 
-use super::{ToolExecutor, safe_resolve, required_str, optional_str};
+use super::{optional_str, required_str, safe_resolve, ToolExecutor};
 use crate::types::ToolDefinition;
 
 const MAX_MATCHES: usize = 100;
@@ -9,7 +9,9 @@ const MAX_MATCHES: usize = 100;
 pub struct GrepTool;
 
 impl ToolExecutor for GrepTool {
-    fn name(&self) -> &str { "grep" }
+    fn name(&self) -> &str {
+        "grep"
+    }
 
     fn definition(&self) -> ToolDefinition {
         ToolDefinition {
@@ -44,8 +46,7 @@ impl ToolExecutor for GrepTool {
         };
         let file_glob = optional_str(&input, "file_glob");
 
-        let re = regex::Regex::new(&pattern_str)
-            .map_err(|e| format!("invalid regex: {e}"))?;
+        let re = regex::Regex::new(&pattern_str).map_err(|e| format!("invalid regex: {e}"))?;
 
         let mut matches = Vec::new();
 
@@ -130,10 +131,28 @@ fn should_skip(path: &Path) -> bool {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         matches!(
             ext,
-            "png" | "jpg" | "jpeg" | "gif" | "ico" | "woff" | "woff2"
-                | "ttf" | "eot" | "zip" | "tar" | "gz" | "bin"
-                | "exe" | "dll" | "so" | "dylib" | "a" | "o"
-                | "pyc" | "class" | "wasm"
+            "png"
+                | "jpg"
+                | "jpeg"
+                | "gif"
+                | "ico"
+                | "woff"
+                | "woff2"
+                | "ttf"
+                | "eot"
+                | "zip"
+                | "tar"
+                | "gz"
+                | "bin"
+                | "exe"
+                | "dll"
+                | "so"
+                | "dylib"
+                | "a"
+                | "o"
+                | "pyc"
+                | "class"
+                | "wasm"
         )
     } else {
         false
@@ -150,7 +169,10 @@ fn simple_glob_match(pattern: &str, name: &str) -> bool {
         // Basic wildcard: convert to regex
         let re_str = format!(
             "^{}$",
-            pattern.replace('.', "\\.").replace('*', ".*").replace('?', ".")
+            pattern
+                .replace('.', "\\.")
+                .replace('*', ".*")
+                .replace('?', ".")
         );
         regex::Regex::new(&re_str)
             .map(|re| re.is_match(name))
