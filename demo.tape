@@ -14,25 +14,25 @@ Set Padding 20
 
 # Start with a clean slate
 Hide
-Type "velos kill --all 2>/dev/null; sleep 0.5; clear"
+Type `for name in $(velos list --json 2>/dev/null | python3 -c "import sys,json; [print(p['name']) for p in json.loads(sys.stdin.read())]" 2>/dev/null); do velos stop "$name" 2>/dev/null; velos delete "$name" 2>/dev/null; done; sleep 0.5; clear`
 Enter
-Sleep 1s
+Sleep 2s
 Show
 
-# Start processes
-Type "velos start examples/node-web-server/velos.toml --name api"
+# Start processes from example configs
+Type "velos start --config examples/node-web-server/velos.toml"
 Enter
 Sleep 2s
 
-Type "velos start examples/python-fastapi/velos.toml --name worker"
+Type "velos start --config examples/python-fastapi/velos.toml"
 Enter
 Sleep 2s
 
-Type "velos start examples/rust-binary/velos.toml --name metrics"
+Type "velos start --config examples/rust-binary/velos.toml"
 Enter
 Sleep 2s
 
-# Show process list (normal)
+# Show process list
 Type "velos list"
 Enter
 Sleep 3s
@@ -43,12 +43,7 @@ Enter
 Sleep 3s
 
 # Smart log summary
-Type "velos logs api --summary"
-Enter
-Sleep 3s
-
-# Show AI crash commands (as if there's a crash record)
-Type "velos ai list"
+Type "velos logs web --summary"
 Enter
 Sleep 3s
 

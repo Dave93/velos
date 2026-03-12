@@ -16,7 +16,7 @@ max_memory_restart = "512M"
 
 [apps.frontend.env]
 NODE_ENV = "production"
-PORT = "3000"
+PORT = "3001"
 
 # ============================================================================
 # Backend API (Node.js HTTP server)

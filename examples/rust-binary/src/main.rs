@@ -3,7 +3,7 @@ use std::net::TcpListener;
 use std::time::Instant;
 
 fn main() {
-    let addr = std::env::var("LISTEN_ADDR").unwrap_or_else(|_| "127.0.0.1:8080".to_string());
+    let addr = std::env::var("LISTEN_ADDR").unwrap_or_else(|_| "127.0.0.1:9090".to_string());
     let listener = TcpListener::bind(&addr).expect("failed to bind");
     let start = Instant::now();
 
