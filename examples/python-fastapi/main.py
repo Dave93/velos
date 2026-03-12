@@ -34,6 +34,10 @@ signal.signal(signal.SIGTERM, handle_sigterm)
 if __name__ == "__main__":
     import uvicorn
 
+    # Uvicorn logs to stderr by default, which makes velos tag them as [ERR].
+    # Redirect stderr to stdout so all output appears as normal log lines.
+    sys.stderr = sys.stdout
+
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host=host, port=port)
