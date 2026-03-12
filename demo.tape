@@ -1,4 +1,6 @@
 # Velos demo GIF
+# Prerequisites:
+#   cd examples/rust-binary && cargo build --release && cd ../..
 # Run: vhs demo.tape
 # Output: demo.gif
 
@@ -12,25 +14,27 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 60ms
 Set Padding 20
 
-# Start with a clean slate
+# Clean slate (hidden): kill daemon so all processes stop, then clear
 Hide
-Type `for name in $(velos list --json 2>/dev/null | python3 -c "import sys,json; [print(p['name']) for p in json.loads(sys.stdin.read())]" 2>/dev/null); do velos stop "$name" 2>/dev/null; velos delete "$name" 2>/dev/null; done; sleep 0.5; clear`
+Type "kill $(cat ~/.velos/velos.pid 2>/dev/null) 2>/dev/null; sleep 1; clear"
 Enter
-Sleep 2s
+Sleep 3s
 Show
 
-# Start processes from example configs
+# Start Node.js web server
 Type "velos start --config examples/node-web-server/velos.toml"
 Enter
-Sleep 2s
+Sleep 3s
 
+# Start Python FastAPI
 Type "velos start --config examples/python-fastapi/velos.toml"
 Enter
-Sleep 2s
+Sleep 3s
 
+# Start Rust binary service
 Type "velos start --config examples/rust-binary/velos.toml"
 Enter
-Sleep 2s
+Sleep 3s
 
 # Show process list
 Type "velos list"
