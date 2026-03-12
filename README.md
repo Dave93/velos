@@ -11,6 +11,10 @@
   <a href="https://crates.io/crates/velos"><img src="https://img.shields.io/crates/v/velos" alt="crates.io"></a>
 </p>
 
+<p align="center">
+  <img src="demo.gif" alt="Velos demo" width="900" />
+</p>
+
 ---
 
 ## Why Velos?
