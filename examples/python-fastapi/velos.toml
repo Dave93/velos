@@ -2,9 +2,8 @@
 # Usage: velos start --config velos.toml
 
 [apps.api]
-script = "-m"
+script = "main.py"
 interpreter = "python3"
-args = ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
 autorestart = true
 max_restarts = 10
 min_uptime = 5000

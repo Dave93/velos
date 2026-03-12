@@ -2,7 +2,7 @@
 # Usage: velos start --config velos.toml
 
 [apps.service]
-script = "./target/release/my-service"
+script = "./target/release/velos-example-service"
 # No interpreter needed — runs the binary directly
 autorestart = true
 max_restarts = -1                 # unlimited restarts

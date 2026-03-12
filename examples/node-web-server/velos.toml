@@ -4,7 +4,6 @@
 [apps.web]
 script = "src/index.js"
 interpreter = "node"
-args = ["--max-old-space-size=512"]
 autorestart = true
 max_restarts = 15
 min_uptime = 3000

@@ -133,6 +133,14 @@ async fn run_from_config(config_path: &str, args: &StartArgs) -> Result<(), Velo
     let config = velos_config::load(path)
         .map_err(|e| VelosError::ProtocolError(format!("config error: {e}")))?;
 
+    // Resolve config file's parent directory as base for relative paths
+    let config_dir = std::fs::canonicalize(path)
+        .map_err(|e| VelosError::ProtocolError(format!("cannot resolve config path: {e}")))?;
+    let config_dir = config_dir
+        .parent()
+        .ok_or_else(|| VelosError::ProtocolError("config path has no parent".into()))?
+        .to_path_buf();
+
     let mut client = super::connect().await?;
 
     let env_vars: String = std::env::vars()
@@ -157,10 +165,23 @@ async fn run_from_config(config_path: &str, args: &StartArgs) -> Result<(), Velo
         let watch_paths = app.watch_paths.join(";");
         let watch_ignore = app.watch_ignore.join(";");
 
+        // Resolve cwd: use config file directory as base for relative paths
+        let cwd = match &app.cwd {
+            Some(c) => {
+                let p = std::path::Path::new(c);
+                if p.is_relative() {
+                    config_dir.join(p).to_string_lossy().to_string()
+                } else {
+                    c.clone()
+                }
+            }
+            None => config_dir.to_string_lossy().to_string(),
+        };
+
         let payload = StartPayload {
             name: app_name.clone(),
             script: app.script.clone(),
-            cwd: app.cwd.clone().unwrap_or_else(|| ".".into()),
+            cwd,
             interpreter: app.interpreter.clone(),
             kill_timeout_ms: app.kill_timeout as u32,
             autorestart,
