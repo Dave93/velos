@@ -1,0 +1,41 @@
+# Velos — Node.js Web Server
+# Usage: velos start --config velos.toml
+
+[apps.web]
+script = "src/index.js"
+interpreter = "node"
+args = ["--max-old-space-size=512"]
+autorestart = true
+max_restarts = 15
+min_uptime = 3000
+restart_delay = 1000
+kill_timeout = 5000
+max_memory_restart = "300M"
+
+# File watching (great for development)
+watch = true
+watch_paths = ["src/", "config/"]
+watch_ignore = ["node_modules", ".git", "*.log", "test/"]
+watch_delay = 1000
+
+# Log rotation
+log_max_size = "10M"
+log_retain_count = 10
+
+# Scheduled daily restart to reclaim memory
+cron_restart = "0 4 * * *"
+
+[apps.web.env]
+NODE_ENV = "production"
+PORT = "3000"
+
+[apps.web.env_production]
+NODE_ENV = "production"
+DATABASE_URL = "postgres://prod-db:5432/myapp"
+REDIS_URL = "redis://prod-redis:6379"
+
+[apps.web.env_development]
+NODE_ENV = "development"
+DATABASE_URL = "postgres://localhost:5432/myapp_dev"
+REDIS_URL = "redis://localhost:6379"
+DEBUG = "app:*"

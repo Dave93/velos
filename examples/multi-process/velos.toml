@@ -1,0 +1,70 @@
+# Velos — Multi-Process Stack
+# Manages a complete application: frontend + backend API + background worker
+# Usage: velos start --config velos.toml --env production
+
+# ============================================================================
+# Frontend (Node.js HTTP server)
+# ============================================================================
+[apps.frontend]
+script = "server.js"
+cwd = "./frontend"
+interpreter = "node"
+autorestart = true
+max_restarts = 10
+kill_timeout = 5000
+max_memory_restart = "512M"
+
+[apps.frontend.env]
+NODE_ENV = "production"
+PORT = "3000"
+
+# ============================================================================
+# Backend API (Node.js HTTP server)
+# ============================================================================
+[apps.backend]
+script = "server.js"
+cwd = "./backend"
+interpreter = "node"
+autorestart = true
+max_restarts = 15
+min_uptime = 3000
+restart_delay = 1000
+kill_timeout = 10000
+max_memory_restart = "300M"
+log_max_size = "20M"
+
+[apps.backend.env]
+NODE_ENV = "production"
+PORT = "4000"
+
+[apps.backend.env_production]
+DATABASE_URL = "postgres://prod-db:5432/myapp"
+REDIS_URL = "redis://prod-redis:6379"
+
+[apps.backend.env_development]
+DATABASE_URL = "postgres://localhost:5432/myapp_dev"
+REDIS_URL = "redis://localhost:6379"
+
+# ============================================================================
+# Background Worker (Python)
+# ============================================================================
+[apps.worker]
+script = "tasks.py"
+interpreter = "python3"
+cwd = "./worker"
+autorestart = true
+max_restarts = 10
+max_memory_restart = "256M"
+
+[apps.worker.env]
+PYTHONUNBUFFERED = "1"
+
+# ============================================================================
+# Smart Log Engine — global settings
+# ============================================================================
+[logs]
+classifier = true
+dedup_window = 60
+pattern_window = 300
+anomaly_sigma_warn = 2.0
+anomaly_sigma_crit = 3.0

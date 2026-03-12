@@ -414,6 +414,15 @@ velos start --config velos.toml --env production
 
 Full example: [`config/velos.example.toml`](config/velos.example.toml)
 
+### Stack Examples
+
+| Stack | Config | Description |
+|-------|--------|-------------|
+| [Node.js Web Server](examples/node-web-server/) | [velos.toml](examples/node-web-server/velos.toml) | Express/Fastify with file watching, memory limits, env profiles |
+| [Python FastAPI](examples/python-fastapi/) | [velos.toml](examples/python-fastapi/velos.toml) | Uvicorn + Celery worker |
+| [Rust Binary](examples/rust-binary/) | [velos.toml](examples/rust-binary/velos.toml) | Compiled binary with exponential backoff restarts |
+| [Multi-Process](examples/multi-process/) | [velos.toml](examples/multi-process/velos.toml) | Frontend + Backend + Worker in one config |
+
 ---
 
 ## Architecture

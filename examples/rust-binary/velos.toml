@@ -1,0 +1,31 @@
+# Velos — Rust Binary Service
+# Usage: velos start --config velos.toml
+
+[apps.service]
+script = "./target/release/my-service"
+# No interpreter needed — runs the binary directly
+autorestart = true
+max_restarts = -1                 # unlimited restarts
+min_uptime = 2000
+restart_delay = 500
+exp_backoff_restart_delay = true  # 500ms → 1s → 2s → 4s ...
+kill_timeout = 10000
+max_memory_restart = "1G"
+
+# Log rotation
+log_max_size = "50M"
+log_retain_count = 7
+
+[apps.service.env]
+RUST_LOG = "info"
+RUST_BACKTRACE = "1"
+
+[apps.service.env_production]
+RUST_LOG = "warn"
+LISTEN_ADDR = "0.0.0.0:8080"
+DATABASE_URL = "postgres://prod-db:5432/myapp"
+
+[apps.service.env_development]
+RUST_LOG = "debug,tower_http=trace"
+LISTEN_ADDR = "127.0.0.1:8080"
+DATABASE_URL = "postgres://localhost:5432/myapp_dev"

@@ -1,0 +1,49 @@
+# Velos — Python FastAPI / Uvicorn
+# Usage: velos start --config velos.toml
+
+[apps.api]
+script = "-m"
+interpreter = "python3"
+args = ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+autorestart = true
+max_restarts = 10
+min_uptime = 5000
+kill_timeout = 10000
+max_memory_restart = "512M"
+
+# Watch for development
+watch = false
+watch_paths = ["app/", "main.py"]
+watch_ignore = ["__pycache__", ".git", "*.pyc", ".venv"]
+watch_delay = 2000
+
+# Log rotation
+log_max_size = "20M"
+log_retain_count = 14
+
+[apps.api.env]
+PYTHONUNBUFFERED = "1"
+APP_ENV = "production"
+
+[apps.api.env_production]
+APP_ENV = "production"
+DATABASE_URL = "postgresql+asyncpg://prod-db:5432/myapp"
+REDIS_URL = "redis://prod-redis:6379/0"
+
+[apps.api.env_development]
+APP_ENV = "development"
+DATABASE_URL = "postgresql+asyncpg://localhost:5432/myapp_dev"
+REDIS_URL = "redis://localhost:6379/0"
+LOG_LEVEL = "debug"
+
+# Celery is commented out — uncomment if you have a broker (Redis/RabbitMQ)
+# [apps.celery]
+# script = "-m"
+# interpreter = "python3"
+# args = ["celery", "-A", "app.worker", "worker", "--loglevel=info", "--concurrency=2"]
+# autorestart = true
+# max_restarts = 10
+# max_memory_restart = "256M"
+#
+# [apps.celery.env]
+# PYTHONUNBUFFERED = "1"

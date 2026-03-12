@@ -11,6 +11,7 @@ members = [
     "crates/velos-api",
     "crates/velos-ai",
 ]
+exclude = ["examples/rust-binary"]
 resolver = "2"
 
 [workspace.package]

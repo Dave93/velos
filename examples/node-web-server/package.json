@@ -1,0 +1,8 @@
+{
+  "name": "velos-example-node-web-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js"
+  }
+}
